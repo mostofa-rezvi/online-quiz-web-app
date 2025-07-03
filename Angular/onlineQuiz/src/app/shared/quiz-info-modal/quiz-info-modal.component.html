@@ -1,1 +1,31 @@
-<p>quiz-info-modal works!</p>
+<div class="modal fade" id="quizInfoModal" tabindex="-1" aria-labelledby="quizInfoModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content" *ngIf="selectedAttempt && selectedQuiz">
+      <div class="modal-header">
+        <h5 class="modal-title" id="quizInfoModalLabel">Quiz Details: {{ selectedQuiz.title }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <h6>Quiz Summary</h6>
+        <p>Category: {{ selectedQuiz.category }}</p>
+        <p>Date Taken: {{ selectedAttempt.date | date:'medium' }}</p>
+
+        <hr>
+
+        <h6>Performance Stats</h6>
+        <p><strong>Score: {{ selectedAttempt.score }} out of {{ selectedAttempt.totalQuestions }}</strong></p>
+        <div class="progress">
+          <div class="progress-bar" role="progressbar"
+            [style.width.%]="(selectedAttempt.score / selectedAttempt.totalQuestions) * 100" aria-valuenow="25"
+            aria-valuemin="0" aria-valuemax="100">
+            {{ ((selectedAttempt.score / selectedAttempt.totalQuestions) * 100) | number:'1.0-0' }}%
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>

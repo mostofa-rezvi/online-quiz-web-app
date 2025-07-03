@@ -1,1 +1,54 @@
-<p>quiz-take works!</p>
+<div class="quiz-container" *ngIf="quiz">
+  <div class="freeze-overlay" *ngIf="isQuizStarted"></div>
+
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h3>{{ quiz.title }}</h3>
+      <div *ngIf="isQuizStarted" class="fw-bold fs-4">
+        Time Left: {{ timeLeft | number: '2.0-0' }}s
+      </div>
+    </div>
+    <div class="card-body">
+      <div *ngIf="!isQuizStarted" class="text-center">
+        <h4>Quiz Rules</h4>
+        <ul class="list-unstyled">
+          <li>Total Questions: {{ quiz.questions.length }}</li>
+          <li>Time Limit: {{ quiz.questions.length * 60 }} seconds</li>
+          <li>You can skip questions.</li>
+          <li>The window will be locked during the quiz.</li>
+        </ul>
+        <button class="btn btn-primary btn-lg mt-3" (click)="startQuiz()">Start Quiz</button>
+      </div>
+
+      <div *ngIf="isQuizStarted">
+        <div *ngFor="let q of currentQuestions; let i = index">
+          <div class="mb-4">
+            <h5>Q{{ (currentPage - 1) * questionsPerPage + i + 1 }}. {{ q.text }}</h5>
+            <div class="list-group">
+              <label *ngFor="let option of q.options; let j = index" class="list-group-item list-group-item-action">
+                <input class="form-check-input me-2" type="radio" [name]="'question'+q.id" [value]="j"
+                  (change)="selectAnswer(q.id, j)">
+                {{ option }}
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="d-flex justify-content-between mt-4">
+          <button class="btn btn-secondary" (click)="prevPage()" [disabled]="currentPage === 1">
+            Previous
+          </button>
+          <button *ngIf="currentPage < totalPages" class="btn btn-info" (click)="nextPage()">
+            Next
+          </button>
+          <button *ngIf="currentPage === totalPages" class="btn btn-success" data-bs-toggle="modal"
+            data-bs-target="#quizResultModal" (click)="submitQuiz()">
+            Submit Quiz
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<app-quiz-result-modal [result]="quizResult"></app-quiz-result-modal>

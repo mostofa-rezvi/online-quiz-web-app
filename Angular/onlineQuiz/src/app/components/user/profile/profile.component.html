@@ -1,1 +1,36 @@
-<p>profile works!</p>
+<div class="container-fluid" *ngIf="user">
+  <h1 class="mb-4">User Profile</h1>
+  <div class="card" style="max-width: 500px;">
+    <div class="card-header fs-5">
+      Profile Details
+    </div>
+    <div class="card-body">
+      <div class="d-flex align-items-center mb-4">
+        <i class="bi bi-person-circle display-1 me-4 text-secondary"></i>
+        <div>
+          <h2 class="card-title mb-0">{{ user.username }}</h2>
+          <span class="badge" [ngClass]="user.role === 'admin' ? 'bg-danger' : 'bg-primary'">
+            {{ user.role | titlecase }}
+          </span>
+        </div>
+      </div>
+
+      <ul class="list-group list-group-flush">
+        <li class="list-group-item">
+          <strong>Email:</strong> {{ user.email }}
+        </li>
+        <li class="list-group-item">
+          <strong>User ID:</strong> {{ user.id }}
+        </li>
+        <li class="list-group-item">
+          <strong>Account Status:</strong> <span class="text-success">Active</span>
+        </li>
+      </ul>
+    </div>
+    <div class="card-footer text-end">
+      <a routerLink="/settings" class="btn btn-secondary">
+        <i class="bi bi-pencil-square me-1"></i> Edit Profile & Settings
+      </a>
+    </div>
+  </div>
+</div>

@@ -1,1 +1,79 @@
-<p>sidebar works!</p>
+<div class="sidebar d-flex flex-column flex-shrink-0 p-3 text-white bg-dark">
+  <a href="/" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-white text-decoration-none">
+    <i class="bi bi-patch-question-fill me-2 fs-4"></i>
+    <span class="fs-4">Online Quiz</span>
+  </a>
+  <hr>
+  <ul class="nav nav-pills flex-column mb-auto">
+    <li class="nav-item">
+      <a routerLink="/dashboard" routerLinkActive="active" class="nav-link text-white">
+        <i class="bi bi-speedometer2 me-2"></i> Dashboard
+      </a>
+    </li>
+    <li>
+      <a routerLink="/profile" routerLinkActive="active" class="nav-link text-white">
+        <i class="bi bi-person-circle me-2"></i> Profile
+      </a>
+    </li>
+    <li>
+      <a routerLink="/quizzes/available" routerLinkActive="active" class="nav-link text-white">
+        <i class="bi bi-journals me-2"></i> Available Quizzes
+      </a>
+    </li>
+    <li>
+      <a routerLink="/quizzes/current" routerLinkActive="active" class="nav-link text-white">
+        <i class="bi bi-clock-history me-2"></i> Current Quizzes
+      </a>
+    </li>
+    <li>
+      <a routerLink="/quizzes/upcoming" routerLinkActive="active" class="nav-link text-white">
+        <i class="bi bi-calendar-event me-2"></i> Upcoming Quizzes
+      </a>
+    </li>
+    <li>
+      <a routerLink="/quiz/history" routerLinkActive="active" class="nav-link text-white">
+        <i class="bi bi-archive me-2"></i> Quiz History
+      </a>
+    </li>
+    <li>
+      <a routerLink="/settings" routerLinkActive="active" class="nav-link text-white">
+        <i class="bi bi-gear me-2"></i> Settings
+      </a>
+    </li>
+
+    <!-- Admin Links -->
+    <ng-container *ngIf="isAdmin">
+      <hr>
+      <li class="nav-item">
+        <span class="nav-link text-secondary">ADMIN</span>
+      </li>
+      <li>
+        <a routerLink="/admin/quiz/create" routerLinkActive="active" class="nav-link text-white">
+          <i class="bi bi-plus-circle me-2"></i> Create Quiz
+        </a>
+      </li>
+      <li>
+        <a routerLink="/admin/quiz/list" routerLinkActive="active" class="nav-link text-white">
+          <i class="bi bi-list-task me-2"></i> Manage Quizzes
+        </a>
+      </li>
+    </ng-container>
+
+  </ul>
+  <hr>
+  <div class="dropdown">
+    <a href="#" class="d-flex align-items-center text-white text-decoration-none dropdown-toggle" id="dropdownUser1"
+      data-bs-toggle="dropdown" aria-expanded="false">
+      <i class="bi bi-person-badge-fill me-2 fs-4"></i>
+      <strong>{{ userName }}</strong>
+    </a>
+    <ul class="dropdown-menu dropdown-menu-dark text-small shadow" aria-labelledby="dropdownUser1">
+      <li><a class="dropdown-item" routerLink="/settings">Settings</a></li>
+      <li><a class="dropdown-item" routerLink="/profile">Profile</a></li>
+      <li>
+        <hr class="dropdown-divider">
+      </li>
+      <li><a class="dropdown-item" (click)="logout()">Sign out</a></li>
+    </ul>
+  </div>
+</div>

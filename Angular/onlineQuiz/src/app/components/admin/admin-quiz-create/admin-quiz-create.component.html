@@ -1,1 +1,92 @@
-<p>admin-quiz-create works!</p>
+<h2 class="mb-4">Create New Quiz</h2>
+<div class="row">
+  <div class="col-md-7">
+    <form [formGroup]="quizForm" (ngSubmit)="onSubmit()">
+      <div class="card">
+        <div class="card-header">Quiz Details</div>
+        <div class="card-body">
+          <div class="mb-3">
+            <label class="form-label">Quiz Title</label>
+            <input type="text" class="form-control" formControlName="title">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Category</label>
+            <input type="text" class="form-control" formControlName="category">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Schedule Date & Time</label>
+            <input type="datetime-local" class="form-control" formControlName="schedule">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Number of Questions</label>
+            <select class="form-select" formControlName="questionCount" (change)="onCountChange()">
+              <option [ngValue]="5">5</option>
+              <option [ngValue]="10">10</option>
+              <option [ngValue]="20">20</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mt-4">
+        <div class="card-header">Add Questions</div>
+        <div class="card-body" formArrayName="questions">
+          <p *ngIf="questions.length < quizForm.value.questionCount">
+            Add {{ quizForm.value.questionCount - questions.length }} more question(s).
+          </p>
+          <p *ngIf="questions.length >= quizForm.value.questionCount" class="text-success">
+            All questions added. You can now create the quiz.
+          </p>
+
+          <div [formGroup]="newQuestionForm" class="border p-3 rounded mb-3">
+            <h5>New Question</h5>
+            <div class="mb-2">
+              <label class="form-label">Question Text</label>
+              <input type="text" class="form-control" formControlName="text">
+            </div>
+            <div formArrayName="options">
+              <div *ngFor="let option of newQuestionOptions.controls; let i=index" class="input-group mb-2">
+                <span class="input-group-text">Option {{ i + 1 }}</span>
+                <input type="text" class="form-control" [formControlName]="i">
+              </div>
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Correct Option</label>
+              <select class="form-select" formControlName="correctOptionIndex">
+                <option [ngValue]="0">Option 1</option>
+                <option [ngValue]="1">Option 2</option>
+                <option [ngValue]="2">Option 3</option>
+                <option [ngValue]="3">Option 4</option>
+              </select>
+            </div>
+            <button type="button" class="btn btn-secondary" (click)="addQuestion()"
+              [disabled]="newQuestionForm.invalid || questions.length >= quizForm.value.questionCount">
+              Add This Question to List
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary mt-4" [disabled]="!isQuizReady()">
+        Create Quiz
+      </button>
+    </form>
+  </div>
+
+  <div class="col-md-5">
+    <div class="card sticky-top" style="top: 20px;">
+      <div class="card-header">Live Quiz Preview</div>
+      <div class="card-body">
+        <h5>{{ quizForm.value.title || 'Quiz Title' }}</h5>
+        <p class="text-muted">{{ quizForm.value.category || 'Category' }}</p>
+        <hr>
+        <h6>Questions Added ({{ questions.length }} / {{ quizForm.value.questionCount }})</h6>
+        <ul class="list-group">
+          <li *ngFor="let q of questions.controls; let i = index" class="list-group-item">
+            {{ i + 1 }}. {{ q.value.text }}
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>

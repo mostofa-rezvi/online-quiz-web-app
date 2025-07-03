@@ -1,5 +1,8 @@
 import { NgModule } from '@angular/core';
-import { BrowserModule, provideClientHydration } from '@angular/platform-browser';
+import {
+  BrowserModule,
+  provideClientHydration,
+} from '@angular/platform-browser';
 
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
@@ -17,6 +20,9 @@ import { QuizListComponent } from './components/user/quiz-list/quiz-list.compone
 import { QuizHistoryComponent } from './components/user/quiz-history/quiz-history.component';
 import { QuizTakeComponent } from './components/user/quiz-take/quiz-take.component';
 import { SettingsComponent } from './components/user/settings/settings.component';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { AdminQuizDetailsModalComponent } from './shared/admin-quiz-details-modal/admin-quiz-details-modal.component';
+import { NgChartsModule } from 'ng2-charts';
 
 @NgModule({
   declarations: [
@@ -34,15 +40,17 @@ import { SettingsComponent } from './components/user/settings/settings.component
     QuizListComponent,
     QuizHistoryComponent,
     QuizTakeComponent,
-    SettingsComponent
+    SettingsComponent,
+    AdminQuizDetailsModalComponent,
   ],
   imports: [
     BrowserModule,
-    AppRoutingModule
+    AppRoutingModule,
+    FormsModule,
+    ReactiveFormsModule,
+    NgChartsModule,
   ],
-  providers: [
-    provideClientHydration()
-  ],
-  bootstrap: [AppComponent]
+  providers: [provideClientHydration()],
+  bootstrap: [AppComponent],
 })
-export class AppModule { }
+export class AppModule {}

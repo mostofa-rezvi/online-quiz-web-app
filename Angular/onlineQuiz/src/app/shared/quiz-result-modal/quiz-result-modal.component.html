@@ -1,1 +1,19 @@
-<p>quiz-result-modal works!</p>
+<div class="modal fade" id="quizResultModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+  aria-labelledby="staticBackdropLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" *ngIf="result">
+      <div class="modal-header">
+        <h5 class="modal-title" id="staticBackdropLabel">Quiz Completed!</h5>
+      </div>
+      <div class="modal-body text-center">
+        <h4>Your Score</h4>
+        <p class="display-3">{{ result.score }} / {{ result.totalQuestions }}</p>
+        <p>Thank you for participating.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal" (click)="goToDashboard()">Close & Go to
+          Dashboard</button>
+      </div>
+    </div>
+  </div>
+</div>

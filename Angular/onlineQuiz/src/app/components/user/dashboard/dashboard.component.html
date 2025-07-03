@@ -1,1 +1,66 @@
-<p>dashboard works!</p>
+<div class="container-fluid">
+  <h1 class="mb-4">Dashboard</h1>
+
+  <div class="card mb-4">
+    <div class="card-header">
+      Quiz Attendance
+    </div>
+    <div class="card-body">
+      <div style="display: block">
+        <canvas baseChart [data]="barChartData" [options]="barChartOptions" [type]="'bar'">
+        </canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-md-7">
+      <div class="card">
+        <div class="card-header">
+          <h4>Previously Attended Quizzes</h4>
+        </div>
+        <ul class="list-group list-group-flush">
+          <li *ngFor="let attempt of pagedHistory"
+            class="list-group-item d-flex justify-content-between align-items-center">
+            {{ getQuizTitle(attempt.quizId) }} (Score: {{ attempt.score }}/{{ attempt.totalQuestions }})
+            <button class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#quizInfoModal"
+              (click)="selectQuizForInfo(attempt)">
+              Details & Stats
+            </button>
+          </li>
+        </ul>
+        <div class="card-footer" *ngIf="history.length > 0">
+          <nav>
+            <ul class="pagination justify-content-center mb-0">
+              <li class="page-item" [class.disabled]="currentPage === 1">
+                <a class="page-link" href="#" (click)="changePage(currentPage - 1)">Previous</a>
+              </li>
+              <li class="page-item" *ngFor="let page of pages" [class.active]="currentPage === page">
+                <a class="page-link" href="#" (click)="changePage(page)">{{ page }}</a>
+              </li>
+              <li class="page-item" [class.disabled]="currentPage === totalPages">
+                <a class="page-link" href="#" (click)="changePage(currentPage + 1)">Next</a>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-5">
+      <div class="card">
+        <div class="card-header">
+          <h4>Top Available Quizzes</h4>
+        </div>
+        <ul class="list-group list-group-flush">
+          <li *ngFor="let quiz of topQuizzes" class="list-group-item d-flex justify-content-between align-items-center">
+            {{ quiz.title }} ({{ quiz.category }})
+            <a [routerLink]="['/quiz/take', quiz.id]" class="btn btn-sm btn-success">Take Quiz</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<app-quiz-info-modal [selectedAttempt]="selectedAttempt"
+  [selectedQuiz]="getQuizById(selectedAttempt?.quizId)"></app-quiz-info-modal>

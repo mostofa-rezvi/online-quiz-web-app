@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Router } from '@angular/router';
-import { BehaviorSubject, of } from 'rxjs';
+import { BehaviorSubject, Observable, of } from 'rxjs';
 import { User } from '../models/user.model';
 
 @Injectable({
@@ -22,8 +22,7 @@ export class AuthService {
     return this.currentUserSubject.value;
   }
 
-  login(email: string, pass: string) {
-    // Mock login logic
+  login(email: string, pass: string): Observable<User | null> {
     if (email === 'admin@quiz.com' && pass === 'admin123') {
       const adminUser: User = {
         id: 1,
@@ -34,8 +33,9 @@ export class AuthService {
       localStorage.setItem('currentUser', JSON.stringify(adminUser));
       this.currentUserSubject.next(adminUser);
       this.router.navigate(['/dashboard']);
-      return of(adminUser);
+      return of(adminUser); // ✅ Observable<User>
     }
+
     if (email === 'user@quiz.com' && pass === 'user123') {
       const normalUser: User = {
         id: 2,
@@ -46,8 +46,9 @@ export class AuthService {
       localStorage.setItem('currentUser', JSON.stringify(normalUser));
       this.currentUserSubject.next(normalUser);
       this.router.navigate(['/dashboard']);
-      return of(normalUser);
+      return of(normalUser); // ✅ Observable<User>
     }
+
     return of(null);
   }
 

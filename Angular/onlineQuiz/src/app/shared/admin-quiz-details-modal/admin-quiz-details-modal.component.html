@@ -1,0 +1,40 @@
+<div class="modal fade" id="adminQuizDetailsModal" tabindex="-1" aria-labelledby="adminQuizDetailsModalLabel"
+  aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content" *ngIf="quiz">
+      <div class="modal-header">
+        <h5 class="modal-title" id="adminQuizDetailsModalLabel">Quiz Details: {{ quiz.title }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Summary -->
+        <h6>Summary</h6>
+        <div class="row mb-3">
+          <div class="col-md-4"><strong>Category:</strong> {{ quiz.category }}</div>
+          <div class="col-md-4"><strong>Status:</strong> {{ quiz.status | titlecase }}</div>
+          <div class="col-md-4"><strong>Scheduled:</strong> {{ quiz.schedule | date:'full' }}</div>
+        </div>
+        <hr>
+
+        <!-- Questions and Answers -->
+        <h6>Questions & Correct Answers ({{ quiz.questions.length }})</h6>
+        <div *ngFor="let question of quiz.questions; let i = index" class="card mb-3">
+          <div class="card-header">
+            <strong>Question {{ i + 1 }}:</strong> {{ question.text }}
+          </div>
+          <ul class="list-group list-group-flush">
+            <li *ngFor="let option of question.options; let j = index" class="list-group-item"
+              [class.list-group-item-success]="j === question.correctOptionIndex">
+              {{ option }}
+              <span *ngIf="j === question.correctOptionIndex" class="badge bg-success float-end">Correct Answer</span>
+            </li>
+          </ul>
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
