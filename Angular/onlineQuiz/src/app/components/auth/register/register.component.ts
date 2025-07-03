@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { NgForm } from '@angular/forms';
 import { Router } from '@angular/router';
+import { AuthService } from './../../../services/auth.service';
 
 @Component({
   selector: 'app-register',
@@ -9,20 +10,28 @@ import { Router } from '@angular/router';
 })
 export class RegisterComponent {
   registrationSuccess = false;
+  registrationError: string | null = null;
 
-  constructor(private router: Router) {}
+  constructor(private router: Router, private AuthService: AuthService) {}
 
   onRegister(form: NgForm): void {
     if (form.invalid) {
       return;
     }
-
-    console.log('Registering user:', form.value);
-
-    this.registrationSuccess = true;
-
-    setTimeout(() => {
-      this.router.navigate(['/login']);
-    }, 2000);
+    this.registrationError = null;
+    this.AuthService.register(form.value).subscribe({
+      next: (response) => {
+        console.log('Registration successful:', response);
+        this.registrationSuccess = true;
+        setTimeout(() => {
+          this.router.navigate(['/login']);
+        }, 2000);
+      },
+      error: (err) => {
+        this.registrationError =
+          err.error.message || 'Registration failed. Please try again.';
+        console.error(err);
+      },
+    });
   }
 }

@@ -87,12 +87,12 @@ export class AdminQuizCreateComponent implements OnInit {
     }
 
     const formValue = this.quizForm.value;
-    const newQuiz: Quiz = {
-      id: 0,
+    // The Quiz model in Angular already matches the backend DTO well.
+    const newQuiz: Omit<Quiz, 'id'> = {
       title: formValue.title,
       category: formValue.category,
       schedule: new Date(formValue.schedule),
-      status: 'upcoming',
+      status: 'upcoming', // Backend will manage status, but 'upcoming' is a good default.
       questions: formValue.questions,
     };
 

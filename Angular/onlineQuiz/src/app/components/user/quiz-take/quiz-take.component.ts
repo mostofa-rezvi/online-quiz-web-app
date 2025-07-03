@@ -88,25 +88,16 @@ export class QuizTakeComponent implements OnInit, OnDestroy {
     if (document.fullscreenElement) {
       document.exitFullscreen();
     }
+    // No score calculation on frontend
 
-    let score = 0;
-    this.quiz?.questions.forEach((q) => {
-      if (this.userAnswers[q.id] === q.correctOptionIndex) {
-        score++;
-      }
-    });
-
-    const attempt: QuizAttempt = {
+    const attempt = {
       quizId: this.quiz!.id,
-      userId: this.authService.currentUserValue!.id,
-      score: score,
-      totalQuestions: this.quiz!.questions.length,
-      date: new Date(),
       answers: this.userAnswers,
     };
 
     this.quizService.submitQuiz(attempt).subscribe((result) => {
       this.quizResult = result;
+      // The modal should be triggered from here using Bootstrap's JS API or a service
     });
   }
 

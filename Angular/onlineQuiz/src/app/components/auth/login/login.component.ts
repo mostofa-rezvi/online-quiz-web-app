@@ -17,14 +17,19 @@ export class LoginComponent {
   onLogin(form: NgForm): void {
     if (form.invalid) return;
 
+    this.loginError = false;
     const { email, password } = form.value;
 
     this.authService.login(email, password).subscribe({
-      next: (user: User | null) => {
-        this.loginError = !user;
+      next: (user) => {
+        if (!user) {
+          this.loginError = true;
+        }
+        // Navigation is handled in the service
       },
-      error: () => {
+      error: (err) => {
         this.loginError = true;
+        console.error(err);
       },
     });
   }

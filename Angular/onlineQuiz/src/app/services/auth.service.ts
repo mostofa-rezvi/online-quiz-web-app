@@ -1,21 +1,50 @@
-import { Injectable } from '@angular/core';
+import { Inject, Injectable, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
-import { BehaviorSubject, Observable, of } from 'rxjs';
+import { BehaviorSubject, Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
+import { HttpClient } from '@angular/common/http';
 import { User } from '../models/user.model';
+import { environment } from '../environments/environment';
+
+interface JwtResponse {
+  token: string;
+  id: number;
+  username: string;
+  email: string;
+  roles: string[];
+}
 
 @Injectable({
   providedIn: 'root',
 })
 export class AuthService {
-  // In a real app, use a more secure way to store user data/token
-  private currentUserSubject = new BehaviorSubject<User | null>(null);
-  public currentUser$ = this.currentUserSubject.asObservable();
+  private apiUrl = `${environment.apiUrl}/auth`;
+  private currentUserSubject: BehaviorSubject<User | null>;
+  public currentUser$: Observable<User | null>;
 
-  constructor(private router: Router) {
-    const storedUser = localStorage.getItem('currentUser');
-    if (storedUser) {
-      this.currentUserSubject.next(JSON.parse(storedUser));
+  private authToken: string | null = null;
+  private isBrowser: boolean;
+
+  constructor(
+    private router: Router,
+    private http: HttpClient,
+    @Inject(PLATFORM_ID) private platformId: Object
+  ) {
+    this.isBrowser = isPlatformBrowser(this.platformId);
+
+    if (this.isBrowser) {
+      this.authToken = localStorage.getItem('user_token');
+
+      const storedUser = localStorage.getItem('currentUserData');
+      this.currentUserSubject = new BehaviorSubject<User | null>(
+        storedUser ? JSON.parse(storedUser) : null
+      );
+    } else {
+      this.currentUserSubject = new BehaviorSubject<User | null>(null);
     }
+
+    this.currentUser$ = this.currentUserSubject.asObservable();
   }
 
   public get currentUserValue(): User | null {
@@ -23,37 +52,45 @@ export class AuthService {
   }
 
   login(email: string, pass: string): Observable<User | null> {
-    if (email === 'admin@quiz.com' && pass === 'admin123') {
-      const adminUser: User = {
-        id: 1,
-        username: 'Admin User',
-        email: 'admin@quiz.com',
-        role: 'admin',
-      };
-      localStorage.setItem('currentUser', JSON.stringify(adminUser));
-      this.currentUserSubject.next(adminUser);
-      this.router.navigate(['/dashboard']);
-      return of(adminUser); // ✅ Observable<User>
-    }
+    return this.http
+      .post<JwtResponse>(`${this.apiUrl}/signin`, { email, password: pass })
+      .pipe(
+        map((response) => {
+          if (response?.token && this.isBrowser) {
+            const user: User = {
+              id: response.id,
+              username: response.username,
+              email: response.email,
+              roles: response.roles,
+              role: '', // adjust if needed
+            };
 
-    if (email === 'user@quiz.com' && pass === 'user123') {
-      const normalUser: User = {
-        id: 2,
-        username: 'John Doe',
-        email: 'user@quiz.com',
-        role: 'user',
-      };
-      localStorage.setItem('currentUser', JSON.stringify(normalUser));
-      this.currentUserSubject.next(normalUser);
-      this.router.navigate(['/dashboard']);
-      return of(normalUser); // ✅ Observable<User>
-    }
+            localStorage.setItem('user_token', response.token);
+            localStorage.setItem('currentUser', JSON.stringify(response));
+            localStorage.setItem('currentUserData', JSON.stringify(user));
 
-    return of(null);
+            this.authToken = response.token;
+            this.currentUserSubject.next(user);
+            this.router.navigate(['/dashboard']);
+            return user;
+          }
+          return null;
+        })
+      );
   }
 
-  logout() {
-    localStorage.removeItem('currentUser');
+  register(userData: any): Observable<any> {
+    return this.http.post(`${this.apiUrl}/signup`, userData);
+  }
+
+  logout(): void {
+    if (this.isBrowser) {
+      localStorage.removeItem('user_token');
+      localStorage.removeItem('currentUser');
+      localStorage.removeItem('currentUserData');
+    }
+
+    this.authToken = null;
     this.currentUserSubject.next(null);
     this.router.navigate(['/login']);
   }
@@ -63,6 +100,20 @@ export class AuthService {
   }
 
   isAdmin(): boolean {
-    return this.currentUserValue?.role === 'admin';
+    return this.currentUserValue?.roles.includes('ROLE_ADMIN') ?? false;
+  }
+
+  saveToken(token: string): void {
+    if (this.isBrowser) {
+      localStorage.setItem('user_token', token);
+    }
+    this.authToken = token;
+  }
+
+  getToken(): string | null {
+    if (!this.authToken && this.isBrowser) {
+      this.authToken = localStorage.getItem('user_token');
+    }
+    return this.authToken;
   }
 }

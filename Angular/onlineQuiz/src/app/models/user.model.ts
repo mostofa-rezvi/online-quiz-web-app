@@ -1,7 +1,8 @@
 export interface User {
+  role: string;
   id: number;
   username: string;
   email: string;
-  password?: string; // Should not be sent to frontend in real app
-  role: 'user' | 'admin';
+  password?: string;
+  roles: string[]; // Changed from 'role' to 'roles' array
 }

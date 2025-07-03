@@ -23,6 +23,14 @@ import { SettingsComponent } from './components/user/settings/settings.component
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { AdminQuizDetailsModalComponent } from './shared/admin-quiz-details-modal/admin-quiz-details-modal.component';
 import { NgChartsModule } from 'ng2-charts';
+import {
+  HTTP_INTERCEPTORS,
+  HttpClientModule,
+  provideHttpClient,
+  withFetch,
+} from '@angular/common/http';
+import { JwtInterceptor } from './interceptors/jwt.interceptor';
+import { provideRouter } from '@angular/router';
 
 @NgModule({
   declarations: [
@@ -48,9 +56,15 @@ import { NgChartsModule } from 'ng2-charts';
     AppRoutingModule,
     FormsModule,
     ReactiveFormsModule,
+    HttpClientModule,
     NgChartsModule,
   ],
-  providers: [provideClientHydration()],
+  providers: [
+    // provideRouter(Router),
+    provideClientHydration(),
+    { provide: HTTP_INTERCEPTORS, useClass: JwtInterceptor, multi: true },
+    provideHttpClient(withFetch()),
+  ],
   bootstrap: [AppComponent],
 })
 export class AppModule {}
