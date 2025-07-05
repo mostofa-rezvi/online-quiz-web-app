@@ -31,8 +31,6 @@ public class UserService {
         User adminUser = new User();
         adminUser.setName(userDto.getName());
         adminUser.setEmail(userDto.getEmail());
-        // For security, you might want to send a temporary password via email
-        // Here we'll set a default one.
         adminUser.setPassword(passwordEncoder.encode("AdminPassword123!"));
         adminUser.setRole(Role.ADMIN);
         User savedUser = userRepository.save(adminUser);

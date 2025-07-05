@@ -9,17 +9,18 @@ const routes: Routes = [
     loadChildren: () =>
       import('./modules/auth/auth.module').then((m) => m.AuthModule),
   },
-  // {
-  //   path: 'admin',
-  //   loadChildren: () => import('./modules/admin/admin.module').then(m => m.AdminModule),
-  //   canActivate: [authGuard, adminGuard]
-  // },
-  // {
-  //   path: 'user',
-  //   loadChildren: () => import('./modules/user/user.module').then(m => m.UserModule),
-  //   canActivate: [authGuard]
-  // },
-  // Redirect authenticated users from login page
+  {
+    path: 'admin',
+    loadChildren: () =>
+      import('./modules/admin/admin.module').then((m) => m.AdminModule),
+    canActivate: [authGuard, adminGuard],
+  },
+  {
+    path: 'user',
+    loadChildren: () =>
+      import('./modules/user/user.module').then((m) => m.UserModule),
+    canActivate: [authGuard],
+  },
   { path: 'login', redirectTo: '/user/dashboard', pathMatch: 'full' },
   { path: '**', redirectTo: '/login' }, // Fallback route
 ];

@@ -1,0 +1,2029 @@
+Angular project:
+
+1. models:
+> export interface Question {
+  id: number;
+  text: string;
+  options: string[];
+  correctOptionIndex: number;
+}
+
+> import { Question } from './question.model';
+
+export interface Quiz {
+  id: number;
+  title: string;
+  category: string;
+  schedule: Date;
+  status: 'upcoming' | 'current' | 'completed';
+  questions: Question[];
+}
+
+export interface QuizAttempt {
+  quizId: number;
+  userId: number;
+  score: number;
+  totalQuestions: number;
+  date: Date;
+  answers: any; // Store user's answers
+}
+
+> export interface User {
+  role: string;
+  id: number;
+  username: string;
+  email: string;
+  password?: string;
+  roles: string[]; // Changed from 'role' to 'roles' array
+}
+
+
+2. services:
+> import { Inject, Injectable, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { Router } from '@angular/router';
+import { BehaviorSubject, Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
+import { HttpClient } from '@angular/common/http';
+import { User } from '../models/user.model';
+import { environment } from '../environments/environment';
+
+interface JwtResponse {
+  token: string;
+  id: number;
+  username: string;
+  email: string;
+  roles: string[];
+}
+
+@Injectable({
+  providedIn: 'root',
+})
+export class AuthService {
+  private apiUrl = `${environment.apiUrl}/auth`;
+  private currentUserSubject: BehaviorSubject<User | null>;
+  public currentUser$: Observable<User | null>;
+
+  private authToken: string | null = null;
+  private isBrowser: boolean;
+
+  constructor(
+    private router: Router,
+    private http: HttpClient,
+    @Inject(PLATFORM_ID) private platformId: Object
+  ) {
+    this.isBrowser = isPlatformBrowser(this.platformId);
+
+    if (this.isBrowser) {
+      this.authToken = localStorage.getItem('user_token');
+
+      const storedUser = localStorage.getItem('currentUserData');
+      this.currentUserSubject = new BehaviorSubject<User | null>(
+        storedUser ? JSON.parse(storedUser) : null
+      );
+    } else {
+      this.currentUserSubject = new BehaviorSubject<User | null>(null);
+    }
+
+    this.currentUser$ = this.currentUserSubject.asObservable();
+  }
+
+  public get currentUserValue(): User | null {
+    return this.currentUserSubject.value;
+  }
+
+  login(email: string, pass: string): Observable<User | null> {
+    return this.http
+      .post<JwtResponse>(`${this.apiUrl}/signin`, { email, password: pass })
+      .pipe(
+        map((response) => {
+          if (response?.token && this.isBrowser) {
+            const user: User = {
+              id: response.id,
+              username: response.username,
+              email: response.email,
+              roles: response.roles,
+              role: '', // adjust if needed
+            };
+
+            localStorage.setItem('user_token', response.token);
+            localStorage.setItem('currentUser', JSON.stringify(response));
+            localStorage.setItem('currentUserData', JSON.stringify(user));
+
+            this.authToken = response.token;
+            this.currentUserSubject.next(user);
+            this.router.navigate(['/dashboard']);
+            return user;
+          }
+          return null;
+        })
+      );
+  }
+
+  register(userData: any): Observable<any> {
+    return this.http.post(`${this.apiUrl}/signup`, userData);
+  }
+
+  logout(): void {
+    if (this.isBrowser) {
+      localStorage.removeItem('user_token');
+      localStorage.removeItem('currentUser');
+      localStorage.removeItem('currentUserData');
+    }
+
+    this.authToken = null;
+    this.currentUserSubject.next(null);
+    this.router.navigate(['/login']);
+  }
+
+  isLoggedIn(): boolean {
+    return !!this.currentUserValue;
+  }
+
+  isAdmin(): boolean {
+    return this.currentUserValue?.roles.includes('ROLE_ADMIN') ?? false;
+  }
+
+  saveToken(token: string): void {
+    if (this.isBrowser) {
+      localStorage.setItem('user_token', token);
+    }
+    this.authToken = token;
+  }
+
+  getToken(): string | null {
+    if (!this.authToken && this.isBrowser) {
+      this.authToken = localStorage.getItem('user_token');
+    }
+    return this.authToken;
+  }
+}
+
+> import { Injectable } from '@angular/core';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { Quiz, QuizAttempt } from '../models/quiz.model';
+import { environment } from '../environments/environment';
+
+@Injectable({
+  providedIn: 'root',
+})
+export class QuizService {
+  private apiUrl = environment.apiUrl;
+
+  constructor(private http: HttpClient) {}
+
+  getQuizzes(
+    status?: 'upcoming' | 'current' | 'completed'
+  ): Observable<Quiz[]> {
+    let params = new HttpParams();
+    if (status) {
+      params = params.append('status', status);
+    }
+    return this.http.get<Quiz[]>(`${this.apiUrl}/quizzes`, { params });
+  }
+
+  getQuizById(id: number): Observable<Quiz | undefined> {
+    return this.http.get<Quiz>(`${this.apiUrl}/quizzes/${id}`);
+  }
+
+  getQuizHistory(id: number): Observable<QuizAttempt[]> {
+    return this.http.get<QuizAttempt[]>(`${this.apiUrl}/history`);
+  }
+
+  createQuiz(quiz: Omit<Quiz, 'id'>): Observable<Quiz> {
+    return this.http.post<Quiz>(`${this.apiUrl}/admin/quizzes`, quiz);
+  }
+
+  submitQuiz(attempt: {
+    quizId: number;
+    answers: any;
+  }): Observable<QuizAttempt> {
+    return this.http.post<QuizAttempt>(
+      `${this.apiUrl}/quizzes/submit`,
+      attempt
+    );
+  }
+}
+
+> import { Injectable } from '@angular/core';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class UserService {
+
+  constructor() { }
+}
+
+
+
+3. environments:
+> export const environment = {
+  production: false,
+  apiUrl: 'http://localhost:8080/api',
+};
+
+
+
+4. guards:
+> // import { CanActivateFn } from '@angular/router';
+
+import { inject } from '@angular/core';
+import { CanActivateFn, Router } from '@angular/router';
+import { AuthService } from '../services/auth.service';
+
+export const authGuard: CanActivateFn = (route, state) => {
+  const authService = inject(AuthService);
+  const router = inject(Router);
+
+  if (authService.isLoggedIn()) {
+    // Check for admin role if route requires it
+    const requiredRole = route.data['role'];
+    if (requiredRole && requiredRole !== authService.currentUserValue?.roles) {
+      router.navigate(['/dashboard']); // or an unauthorized page
+      return false;
+    }
+    return true;
+  }
+
+  router.navigate(['/login']);
+  return false;
+};
+
+
+
+5. interceptors:
+> import { Injectable } from '@angular/core';
+import {
+  HttpRequest,
+  HttpHandler,
+  HttpEvent,
+  HttpInterceptor,
+} from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { AuthService } from '../services/auth.service';
+import { User } from '../models/user.model';
+
+@Injectable()
+export class JwtInterceptor implements HttpInterceptor {
+  constructor(private authService: AuthService) {}
+
+  intercept(
+    request: HttpRequest<any>,
+    next: HttpHandler
+  ): Observable<HttpEvent<any>> {
+    const currentUser = this.authService.currentUserValue;
+    const storedUserString = localStorage.getItem('currentUser');
+
+    let token: string | null = null;
+    if (storedUserString) {
+      // The backend response is a JwtResponse, not a User object directly
+      const storedUser = JSON.parse(storedUserString);
+      token = storedUser?.token;
+    }
+
+    if (currentUser && token) {
+      request = request.clone({
+        setHeaders: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+    }
+
+    return next.handle(request);
+  }
+}
+
+
+
+6. components:
+ a. admin:
+	> <h2 class="mb-4">Create New Quiz</h2>
+<div class="row">
+  <div class="col-md-7">
+    <form [formGroup]="quizForm" (ngSubmit)="onSubmit()">
+      <div class="card">
+        <div class="card-header">Quiz Details</div>
+        <div class="card-body">
+          <div class="mb-3">
+            <label class="form-label">Quiz Title</label>
+            <input type="text" class="form-control" formControlName="title">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Category</label>
+            <input type="text" class="form-control" formControlName="category">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Schedule Date & Time</label>
+            <input type="datetime-local" class="form-control" formControlName="schedule">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Number of Questions</label>
+            <select class="form-select" formControlName="questionCount" (change)="onCountChange()">
+              <option [ngValue]="5">5</option>
+              <option [ngValue]="10">10</option>
+              <option [ngValue]="20">20</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mt-4">
+        <div class="card-header">Add Questions</div>
+        <div class="card-body" formArrayName="questions">
+          <p *ngIf="questions.length < quizForm.value.questionCount">
+            Add {{ quizForm.value.questionCount - questions.length }} more question(s).
+          </p>
+          <p *ngIf="questions.length >= quizForm.value.questionCount" class="text-success">
+            All questions added. You can now create the quiz.
+          </p>
+
+          <div [formGroup]="newQuestionForm" class="border p-3 rounded mb-3">
+            <h5>New Question</h5>
+            <div class="mb-2">
+              <label class="form-label">Question Text</label>
+              <input type="text" class="form-control" formControlName="text">
+            </div>
+            <div formArrayName="options">
+              <div *ngFor="let option of newQuestionOptions.controls; let i=index" class="input-group mb-2">
+                <span class="input-group-text">Option {{ i + 1 }}</span>
+                <input type="text" class="form-control" [formControlName]="i">
+              </div>
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Correct Option</label>
+              <select class="form-select" formControlName="correctOptionIndex">
+                <option [ngValue]="0">Option 1</option>
+                <option [ngValue]="1">Option 2</option>
+                <option [ngValue]="2">Option 3</option>
+                <option [ngValue]="3">Option 4</option>
+              </select>
+            </div>
+            <button type="button" class="btn btn-secondary" (click)="addQuestion()"
+              [disabled]="newQuestionForm.invalid || questions.length >= quizForm.value.questionCount">
+              Add This Question to List
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary mt-4" [disabled]="!isQuizReady()">
+        Create Quiz
+      </button>
+    </form>
+  </div>
+
+  <div class="col-md-5">
+    <div class="card sticky-top" style="top: 20px;">
+      <div class="card-header">Live Quiz Preview</div>
+      <div class="card-body">
+        <h5>{{ quizForm.value.title || 'Quiz Title' }}</h5>
+        <p class="text-muted">{{ quizForm.value.category || 'Category' }}</p>
+        <hr>
+        <h6>Questions Added ({{ questions.length }} / {{ quizForm.value.questionCount }})</h6>
+        <ul class="list-group">
+          <li *ngFor="let q of questions.controls; let i = index" class="list-group-item">
+            {{ i + 1 }}. {{ q.value.text }}
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+	> import { Component, OnInit } from '@angular/core';
+import { FormArray, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
+import { Quiz } from '../../../models/quiz.model';
+import { QuizService } from '../../../services/quiz.service';
+
+@Component({
+  selector: 'app-admin-quiz-create',
+  templateUrl: './admin-quiz-create.component.html',
+  styleUrls: ['./admin-quiz-create.component.scss'],
+})
+export class AdminQuizCreateComponent implements OnInit {
+  quizForm!: FormGroup;
+  newQuestionForm!: FormGroup;
+
+  constructor(
+    private fb: FormBuilder,
+    private quizService: QuizService,
+    private router: Router
+  ) {}
+
+  ngOnInit(): void {
+    this.quizForm = this.fb.group({
+      title: ['', Validators.required],
+      category: ['', Validators.required],
+      schedule: ['', Validators.required],
+      questionCount: [5, Validators.required],
+      questions: this.fb.array([], Validators.required),
+    });
+
+    this.initNewQuestionForm();
+  }
+
+  initNewQuestionForm() {
+    this.newQuestionForm = this.fb.group({
+      text: ['', Validators.required],
+      options: this.fb.array([
+        this.fb.control('', Validators.required),
+        this.fb.control('', Validators.required),
+        this.fb.control('', Validators.required),
+        this.fb.control('', Validators.required),
+      ]),
+      correctOptionIndex: [null, Validators.required],
+    });
+  }
+
+  get questions(): FormArray {
+    return this.quizForm.get('questions') as FormArray;
+  }
+
+  get newQuestionOptions(): FormArray {
+    return this.newQuestionForm.get('options') as FormArray;
+  }
+
+  onCountChange() {
+    this.questions.clear();
+  }
+
+  addQuestion() {
+    if (this.newQuestionForm.invalid) return;
+
+    const newQuestion = this.fb.group({
+      id: [this.questions.length + 1],
+      ...this.newQuestionForm.value,
+    });
+
+    this.questions.push(newQuestion);
+    this.initNewQuestionForm();
+  }
+
+  isQuizReady(): boolean {
+    const formValue = this.quizForm.value;
+    return (
+      formValue.title &&
+      formValue.category &&
+      formValue.schedule &&
+      this.questions.length === formValue.questionCount
+    );
+  }
+
+  onSubmit() {
+    if (!this.isQuizReady()) {
+      alert(
+        'Please complete the form and add the required number of questions.'
+      );
+      return;
+    }
+
+    const formValue = this.quizForm.value;
+    // The Quiz model in Angular already matches the backend DTO well.
+    const newQuiz: Omit<Quiz, 'id'> = {
+      title: formValue.title,
+      category: formValue.category,
+      schedule: new Date(formValue.schedule),
+      status: 'upcoming', // Backend will manage status, but 'upcoming' is a good default.
+      questions: formValue.questions,
+    };
+
+    this.quizService.createQuiz(newQuiz).subscribe(() => {
+      alert('Quiz created successfully!');
+      this.router.navigate(['/admin/quiz/list']);
+    });
+  }
+}
+
+	> <div class="container-fluid">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Manage Quizzes</h1>
+    <a routerLink="/admin/quiz/create" class="btn btn-primary">
+      <i class="bi bi-plus-circle me-1"></i> Create New Quiz
+    </a>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <table class="table table-hover align-middle">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Title</th>
+            <th>Category</th>
+            <th>Status</th>
+            <th>Scheduled For</th>
+            <th># of Questions</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let quiz of quizzes">
+            <td>{{ quiz.id }}</td>
+            <td>{{ quiz.title }}</td>
+            <td><span class="badge bg-secondary">{{ quiz.category }}</span></td>
+            <td>
+              <span class="badge"
+                [ngClass]="{'bg-success': quiz.status === 'completed', 'bg-warning': quiz.status === 'current', 'bg-info': quiz.status === 'upcoming'}">
+                {{ quiz.status | titlecase }}
+              </span>
+            </td>
+            <td>{{ quiz.schedule | date:'short' }}</td>
+            <td>{{ quiz.questions.length }}</td>
+            <td>
+              <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal"
+                data-bs-target="#adminQuizDetailsModal" (click)="selectQuiz(quiz)">
+                View Details
+              </button>
+
+            </td>
+          </tr>
+          <tr *ngIf="quizzes.length === 0">
+            <td colspan="7" class="text-center">No quizzes found.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<app-admin-quiz-details-modal [quiz]="selectedQuiz"></app-admin-quiz-details-modal>
+
+	> import { Component, OnInit } from '@angular/core';
+import { Quiz } from '../../../models/quiz.model';
+import { QuizService } from '../../../services/quiz.service';
+
+@Component({
+  selector: 'app-admin-quiz-list',
+  templateUrl: './admin-quiz-list.component.html',
+  styleUrls: ['./admin-quiz-list.component.scss'],
+})
+export class AdminQuizListComponent implements OnInit {
+  quizzes: Quiz[] = [];
+  selectedQuiz: Quiz | null = null;
+
+  constructor(private quizService: QuizService) {}
+
+  ngOnInit(): void {
+    this.quizService.getQuizzes().subscribe((data) => {
+      this.quizzes = data.sort(
+        (a, b) =>
+          new Date(b.schedule).getTime() - new Date(a.schedule).getTime()
+      );
+    });
+  }
+
+  selectQuiz(quiz: Quiz): void {
+    this.selectedQuiz = quiz;
+  }
+}
+
+
+
+ b. auth:
+	> <div class="container vh-100 d-flex justify-content-center align-items-center">
+  <div class="card shadow" style="width: 25rem;">
+    <div class="card-body p-5">
+      <h3 class="card-title text-center mb-4">Quiz Login</h3>
+      <form #loginForm="ngForm" (ngSubmit)="onLogin(loginForm)">
+        <div class="mb-3">
+          <label for="email" class="form-label">Email address</label>
+          <input type="email" class="form-control" id="email" name="email" ngModel required email>
+        </div>
+        <div class="mb-3">
+          <label for="password" class="form-label">Password</label>
+          <input type="password" class="form-control" id="password" name="password" ngModel required>
+        </div>
+        <div *ngIf="loginError" class="alert alert-danger p-2 mb-3">Invalid credentials.</div>
+        <button type="submit" class="btn btn-primary w-100" [disabled]="!loginForm.valid">Login</button>
+      </form>
+      <div class="text-center mt-3">
+        <a routerLink="/register">Don't have an account? Register here.</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+	> import { Component } from '@angular/core';
+import { NgForm } from '@angular/forms';
+import { Router } from '@angular/router';
+import { AuthService } from '../../../services/auth.service';
+import { User } from '../../../models/user.model';
+
+@Component({
+  selector: 'app-login',
+  templateUrl: './login.component.html',
+  styleUrls: ['./login.component.scss'],
+})
+export class LoginComponent {
+  loginError = false;
+
+  constructor(private authService: AuthService, private router: Router) {}
+
+  onLogin(form: NgForm): void {
+    if (form.invalid) return;
+
+    this.loginError = false;
+    const { email, password } = form.value;
+
+    this.authService.login(email, password).subscribe({
+      next: (user) => {
+        if (!user) {
+          this.loginError = true;
+        }
+        // Navigation is handled in the service
+      },
+      error: (err) => {
+        this.loginError = true;
+        console.error(err);
+      },
+    });
+  }
+}
+
+	> <div class="container vh-100 d-flex justify-content-center align-items-center">
+  <div class="card shadow" style="width: 25rem;">
+    <div class="card-body p-5">
+      <h3 class="card-title text-center mb-4">Register for Quiz</h3>
+      <form #registerForm="ngForm" (ngSubmit)="onRegister(registerForm)">
+        <div class="mb-3">
+          <label for="username" class="form-label">Username</label>
+          <input type="text" class="form-control" id="username" name="username" ngModel required>
+        </div>
+        <div class="mb-3">
+          <label for="email" class="form-label">Email address</label>
+          <input type="email" class="form-control" id="email" name="email" ngModel required email>
+        </div>
+        <div class="mb-3">
+          <label for="password" class="form-label">Password</label>
+          <input type="password" class="form-control" id="password" name="password" ngModel required minlength="6">
+        </div>
+        <div *ngIf="registrationSuccess" class="alert alert-success p-2 mb-3">Registration successful! Redirecting to
+          login...</div>
+        <button type="submit" class="btn btn-primary w-100" [disabled]="!registerForm.valid">Register</button>
+      </form>
+      <div class="text-center mt-3">
+        <a routerLink="/login">Already have an account? Login here.</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+	> import { Component } from '@angular/core';
+import { NgForm } from '@angular/forms';
+import { Router } from '@angular/router';
+import { AuthService } from './../../../services/auth.service';
+
+@Component({
+  selector: 'app-register',
+  templateUrl: './register.component.html',
+  styleUrls: ['./register.component.scss'],
+})
+export class RegisterComponent {
+  registrationSuccess = false;
+  registrationError: string | null = null;
+
+  constructor(private router: Router, private AuthService: AuthService) {}
+
+  onRegister(form: NgForm): void {
+    if (form.invalid) {
+      return;
+    }
+    this.registrationError = null;
+    this.AuthService.register(form.value).subscribe({
+      next: (response) => {
+        console.log('Registration successful:', response);
+        this.registrationSuccess = true;
+        setTimeout(() => {
+          this.router.navigate(['/login']);
+        }, 2000);
+      },
+      error: (err) => {
+        this.registrationError =
+          err.error.message || 'Registration failed. Please try again.';
+        console.error(err);
+      },
+    });
+  }
+}
+
+
+ c. user:
+	> <div class="container-fluid">
+  <h1 class="mb-4">Dashboard</h1>
+
+  <div class="card mb-4">
+    <div class="card-header">
+      Quiz Attendance
+    </div>
+    <div class="card-body">
+      <div style="display: block">
+        <canvas baseChart [data]="barChartData" [options]="barChartOptions" [type]="'bar'">
+        </canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-md-7">
+      <div class="card">
+        <div class="card-header">
+          <h4>Previously Attended Quizzes</h4>
+        </div>
+        <ul class="list-group list-group-flush">
+          <li *ngFor="let attempt of pagedHistory"
+            class="list-group-item d-flex justify-content-between align-items-center">
+            {{ getQuizTitle(attempt.quizId) }} (Score: {{ attempt.score }}/{{ attempt.totalQuestions }})
+            <button class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#quizInfoModal"
+              (click)="selectQuizForInfo(attempt)">
+              Details & Stats
+            </button>
+          </li>
+        </ul>
+        <div class="card-footer" *ngIf="history.length > 0">
+          <nav>
+            <ul class="pagination justify-content-center mb-0">
+              <li class="page-item" [class.disabled]="currentPage === 1">
+                <a class="page-link" href="#" (click)="changePage(currentPage - 1)">Previous</a>
+              </li>
+              <li class="page-item" *ngFor="let page of pages" [class.active]="currentPage === page">
+                <a class="page-link" href="#" (click)="changePage(page)">{{ page }}</a>
+              </li>
+              <li class="page-item" [class.disabled]="currentPage === totalPages">
+                <a class="page-link" href="#" (click)="changePage(currentPage + 1)">Next</a>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-5">
+      <div class="card">
+        <div class="card-header">
+          <h4>Top Available Quizzes</h4>
+        </div>
+        <ul class="list-group list-group-flush">
+          <li *ngFor="let quiz of topQuizzes" class="list-group-item d-flex justify-content-between align-items-center">
+            {{ quiz.title }} ({{ quiz.category }})
+            <a [routerLink]="['/quiz/take', quiz.id]" class="btn btn-sm btn-success">Take Quiz</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<app-quiz-info-modal [selectedAttempt]="selectedAttempt"
+  [selectedQuiz]="getQuizById(selectedAttempt?.quizId)"></app-quiz-info-modal>
+
+	> import { Component, OnInit } from '@angular/core';
+import { ChartConfiguration } from 'chart.js';
+import { Quiz, QuizAttempt } from '../../../models/quiz.model';
+import { QuizService } from '../../../services/quiz.service';
+import { AuthService } from '../../../services/auth.service';
+
+@Component({
+  selector: 'app-dashboard',
+  templateUrl: './dashboard.component.html',
+  styleUrl: './dashboard.component.scss',
+})
+export class DashboardComponent implements OnInit {
+  barChartData: ChartConfiguration<'bar'>['data'] = {
+    labels: [],
+    datasets: [{ data: [], label: 'Quizzes Attended' }],
+  };
+  barChartOptions: ChartConfiguration<'bar'>['options'] = { responsive: true };
+
+  history: QuizAttempt[] = [];
+  pagedHistory: QuizAttempt[] = [];
+  topQuizzes: Quiz[] = [];
+  allQuizzes: Quiz[] = [];
+
+  currentPage = 1;
+  itemsPerPage = 5;
+  totalPages = 1;
+  pages: number[] = [];
+
+  selectedAttempt: QuizAttempt | null = null;
+
+  constructor(
+    private quizService: QuizService,
+    private authService: AuthService
+  ) {}
+
+  ngOnInit(): void {
+    const currentUser = this.authService.currentUserValue;
+    if (!currentUser) return;
+
+    this.quizService.getQuizzes().subscribe((quizzes) => {
+      this.allQuizzes = quizzes;
+      this.topQuizzes = quizzes
+        .filter((q) => q.status !== 'completed')
+        .slice(0, 5);
+    });
+
+    this.quizService.getQuizHistory(currentUser.id).subscribe((history) => {
+      this.history = history;
+      this.setupPagination();
+      this.updatePagedHistory();
+
+      this.barChartData.labels = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+      ];
+      const monthlyCounts = [0, 0, 0, 0, 0, 5, this.history.length];
+      this.barChartData.datasets[0].data = monthlyCounts;
+    });
+  }
+
+  setupPagination() {
+    this.totalPages = Math.ceil(this.history.length / this.itemsPerPage);
+    this.pages = Array.from({ length: this.totalPages }, (_, i) => i + 1);
+  }
+
+  changePage(page: number) {
+    if (page < 1 || page > this.totalPages) return;
+    this.currentPage = page;
+    this.updatePagedHistory();
+  }
+
+  updatePagedHistory() {
+    const startIndex = (this.currentPage - 1) * this.itemsPerPage;
+    const endIndex = startIndex + this.itemsPerPage;
+    this.pagedHistory = this.history.slice(startIndex, endIndex);
+  }
+
+  getQuizTitle(quizId: number): string {
+    return (
+      this.allQuizzes.find((q) => q.id === quizId)?.title || 'Unknown Quiz'
+    );
+  }
+
+  getQuizById(quizId: number | undefined): Quiz | undefined {
+    if (!quizId) return undefined;
+    return this.allQuizzes.find((q) => q.id === quizId);
+  }
+
+  selectQuizForInfo(attempt: QuizAttempt) {
+    this.selectedAttempt = attempt;
+  }
+}
+
+
+	> <div class="container-fluid" *ngIf="user">
+  <h1 class="mb-4">User Profile</h1>
+  <div class="card" style="max-width: 500px;">
+    <div class="card-header fs-5">
+      Profile Details
+    </div>
+    <div class="card-body">
+      <div class="d-flex align-items-center mb-4">
+        <i class="bi bi-person-circle display-1 me-4 text-secondary"></i>
+        <div>
+          <h2 class="card-title mb-0">{{ user.username }}</h2>
+          <span class="badge" [ngClass]="user.role === 'admin' ? 'bg-danger' : 'bg-primary'">
+            {{ user.role | titlecase }}
+          </span>
+        </div>
+      </div>
+
+      <ul class="list-group list-group-flush">
+        <li class="list-group-item">
+          <strong>Email:</strong> {{ user.email }}
+        </li>
+        <li class="list-group-item">
+          <strong>User ID:</strong> {{ user.id }}
+        </li>
+        <li class="list-group-item">
+          <strong>Account Status:</strong> <span class="text-success">Active</span>
+        </li>
+      </ul>
+    </div>
+    <div class="card-footer text-end">
+      <a routerLink="/settings" class="btn btn-secondary">
+        <i class="bi bi-pencil-square me-1"></i> Edit Profile & Settings
+      </a>
+    </div>
+  </div>
+</div>
+
+	> import { Component, OnInit } from '@angular/core';
+import { User } from '../../../models/user.model';
+import { AuthService } from '../../../services/auth.service';
+
+@Component({
+  selector: 'app-profile',
+  template: './profile.component.html',
+  styleUrls: ['./profile.component.scss'],
+})
+export class ProfileComponent implements OnInit {
+  user: User | null = null;
+
+  constructor(private authService: AuthService) {}
+
+  ngOnInit(): void {
+    this.authService.currentUser$.subscribe((user) => {
+      this.user = user;
+    });
+  }
+}
+
+
+	> <div class="container-fluid">
+  <h1 class="mb-4">My Quiz History</h1>
+
+  <div class="card">
+    <div class="card-body">
+      <table class="table table-hover align-middle">
+        <thead>
+          <tr>
+            <th>Quiz Title</th>
+            <th>Category</th>
+            <th>Date Taken</th>
+            <th>Score</th>
+            <th>Percentage</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let attempt of pagedHistory">
+            <td><strong>{{ getQuizTitle(attempt.quizId) }}</strong></td>
+            <td>{{ getQuizCategory(attempt.quizId) }}</td>
+            <td>{{ attempt.date | date:'longDate' }}</td>
+            <td>{{ attempt.score }} / {{ attempt.totalQuestions }}</td>
+            <td>
+              <div class="progress" style="height: 20px;">
+                <div class="progress-bar" role="progressbar" [style.width.%]="getPercentage(attempt)"
+                  [attr.aria-valuenow]="getPercentage(attempt)">
+                  {{ getPercentage(attempt) | number:'1.0-0' }}%
+                </div>
+              </div>
+            </td>
+            <td>
+              <button class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#quizInfoModal"
+                (click)="selectQuizForInfo(attempt)">
+                View Stats
+              </button>
+            </td>
+          </tr>
+          <tr *ngIf="history.length === 0">
+            <td colspan="6" class="text-center p-4">You have not attempted any quizzes yet.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card-footer" *ngIf="history.length > 0">
+      <nav>
+        <ul class="pagination justify-content-center mb-0">
+          <li class="page-item" [class.disabled]="currentPage === 1">
+            <a class="page-link" href="#" (click)="$event.preventDefault(); changePage(currentPage - 1)">Previous</a>
+          </li>
+          <li class="page-item" *ngFor="let page of pages" [class.active]="currentPage === page">
+            <a class="page-link" href="#" (click)="$event.preventDefault(); changePage(page)">{{ page }}</a>
+          </li>
+          <li class="page-item" [class.disabled]="currentPage === totalPages">
+            <a class="page-link" href="#" (click)="$event.preventDefault(); changePage(currentPage + 1)">Next</a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+<app-quiz-info-modal [selectedAttempt]="selectedAttempt"
+  [selectedQuiz]="getQuizById(selectedAttempt?.quizId)"></app-quiz-info-modal>
+
+	> import { Component, OnInit } from '@angular/core';
+import { Quiz, QuizAttempt } from '../../../models/quiz.model';
+import { AuthService } from '../../../services/auth.service';
+import { QuizService } from '../../../services/quiz.service';
+
+@Component({
+  selector: 'app-quiz-history',
+  templateUrl: './quiz-history.component.html',
+  styleUrls: ['./quiz-history.component.scss'],
+})
+export class QuizHistoryComponent implements OnInit {
+  history: QuizAttempt[] = [];
+  pagedHistory: QuizAttempt[] = [];
+  allQuizzes: Quiz[] = [];
+
+  currentPage = 1;
+  itemsPerPage = 10;
+  totalPages = 1;
+  pages: number[] = [];
+
+  selectedAttempt: QuizAttempt | null = null;
+
+  constructor(
+    private quizService: QuizService,
+    private authService: AuthService
+  ) {}
+
+  ngOnInit(): void {
+    const currentUser = this.authService.currentUserValue;
+    if (!currentUser) return;
+
+    this.quizService.getQuizzes().subscribe((quizzes) => {
+      this.allQuizzes = quizzes;
+    });
+
+    this.quizService.getQuizHistory(currentUser.id).subscribe((history) => {
+      this.history = history.sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+      this.setupPagination();
+      this.updatePagedHistory();
+    });
+  }
+
+  setupPagination() {
+    this.totalPages = Math.ceil(this.history.length / this.itemsPerPage);
+    this.pages = Array.from({ length: this.totalPages }, (_, i) => i + 1);
+  }
+
+  changePage(page: number) {
+    if (page < 1 || page > this.totalPages) return;
+    this.currentPage = page;
+    this.updatePagedHistory();
+  }
+
+  updatePagedHistory() {
+    const startIndex = (this.currentPage - 1) * this.itemsPerPage;
+    const endIndex = startIndex + this.itemsPerPage;
+    this.pagedHistory = this.history.slice(startIndex, endIndex);
+  }
+
+  getQuizById(quizId: number | undefined): Quiz | undefined {
+    if (!quizId) return undefined;
+    return this.allQuizzes.find((q) => q.id === quizId);
+  }
+
+  getQuizTitle(quizId: number): string {
+    return this.getQuizById(quizId)?.title || 'Unknown Quiz';
+  }
+
+  getQuizCategory(quizId: number): string {
+    return this.getQuizById(quizId)?.category || 'N/A';
+  }
+
+  getPercentage(attempt: QuizAttempt): number {
+    return (attempt.score / attempt.totalQuestions) * 100;
+  }
+
+  selectQuizForInfo(attempt: QuizAttempt) {
+    this.selectedAttempt = attempt;
+  }
+}
+
+
+	> <div class="container-fluid">
+  <h1 class="mb-4">{{ pageTitle }}</h1>
+
+  <div class="card mb-4">
+    <div class="card-body">
+      <div class="row g-3 align-items-center">
+        <div class="col-md-6">
+          <label for="search" class="form-label">Search by Title</label>
+          <input type="text" id="search" class="form-control" placeholder="e.g., Java Basics" [(ngModel)]="searchTerm"
+            (input)="applyFilters()">
+        </div>
+        <div class="col-md-6">
+          <label for="category" class="form-label">Filter by Category</label>
+          <select id="category" class="form-select" [(ngModel)]="selectedCategory" (change)="applyFilters()">
+            <option value="all">All Categories</option>
+            <option *ngFor="let category of categories" [value]="category">{{ category }}</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row" *ngIf="filteredQuizzes.length > 0; else noQuizzes">
+    <div class="col-lg-4 col-md-6 mb-4" *ngFor="let quiz of filteredQuizzes">
+      <div class="card h-100 shadow-sm">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="card-title mb-0">{{ quiz.title }}</h5>
+          <span class="badge" [ngClass]="getQuizStatusClass(quiz.status)">
+            {{ quiz.status | titlecase }}
+          </span>
+        </div>
+        <div class="card-body">
+          <p class="card-text">
+            <strong>Category:</strong> {{ quiz.category }}<br>
+            <strong>Questions:</strong> {{ quiz.questions.length }}<br>
+            <strong>Scheduled:</strong> {{ quiz.schedule | date:'medium' }}
+          </p>
+        </div>
+        <div class="card-footer text-center">
+          <a [routerLink]="['/quiz/take', quiz.id]" class="btn btn-primary w-100">
+            View & Start Quiz
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <ng-template #noQuizzes>
+    <div class="text-center p-5 border rounded bg-light">
+      <i class="bi bi-journal-x display-4 text-muted"></i>
+      <h4 class="mt-3">No Quizzes Found</h4>
+      <p class="text-muted">There are no quizzes that match the current filters.</p>
+    </div>
+  </ng-template>
+</div>
+
+	> import { Component, OnDestroy, OnInit } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
+import { Subscription } from 'rxjs';
+import { Quiz } from '../../../models/quiz.model';
+import { QuizService } from '../../../services/quiz.service';
+
+@Component({
+  selector: 'app-quiz-list',
+  templateUrl: './quiz-list.component.html',
+  styleUrls: ['./quiz-list.component.scss'],
+})
+export class QuizListComponent implements OnInit, OnDestroy {
+  pageTitle: string = 'Available Quizzes';
+
+  allQuizzes: Quiz[] = [];
+  filteredQuizzes: Quiz[] = [];
+
+  searchTerm: string = '';
+  selectedCategory: string = 'all';
+  categories: string[] = [];
+
+  private routeType: 'all' | 'current' | 'upcoming' | 'category' = 'all';
+  private routeCategory: string | null = null;
+  private subscriptions = new Subscription();
+
+  constructor(
+    private quizService: QuizService,
+    private route: ActivatedRoute
+  ) {}
+
+  ngOnInit(): void {
+    const routeSub = this.route.paramMap.subscribe((params) => {
+      this.routeType = this.route.snapshot.data['type'];
+      this.routeCategory = params.get('category');
+
+      this.loadQuizzes();
+    });
+
+    this.subscriptions.add(routeSub);
+  }
+
+  loadQuizzes(): void {
+    const quizSub = this.quizService.getQuizzes().subscribe((quizzes) => {
+      this.allQuizzes = quizzes;
+      this.categories = [...new Set(quizzes.map((q) => q.category))];
+      this.applyFilters();
+    });
+
+    this.subscriptions.add(quizSub);
+  }
+
+  applyFilters(): void {
+    let quizzes = [...this.allQuizzes];
+
+    switch (this.routeType) {
+      case 'current':
+        this.pageTitle = 'Current Quizzes';
+        quizzes = quizzes.filter((q) => q.status === 'current');
+        break;
+      case 'upcoming':
+        this.pageTitle = 'Upcoming Quizzes';
+        quizzes = quizzes.filter((q) => q.status === 'upcoming');
+        break;
+      case 'category':
+        this.pageTitle = `Quizzes in Category: ${this.routeCategory}`;
+        quizzes = quizzes.filter(
+          (q) =>
+            q.category.toLowerCase() === this.routeCategory?.toLowerCase() &&
+            q.status !== 'completed'
+        );
+        break;
+      default:
+        this.pageTitle = 'All Available Quizzes';
+        quizzes = quizzes.filter((q) => q.status !== 'completed');
+        break;
+    }
+
+    if (this.searchTerm) {
+      quizzes = quizzes.filter((q) =>
+        q.title.toLowerCase().includes(this.searchTerm.toLowerCase())
+      );
+    }
+
+    if (this.selectedCategory !== 'all') {
+      quizzes = quizzes.filter((q) => q.category === this.selectedCategory);
+    }
+
+    this.filteredQuizzes = quizzes.sort(
+      (a, b) => new Date(a.schedule).getTime() - new Date(b.schedule).getTime()
+    );
+  }
+
+  getQuizStatusClass(status: 'upcoming' | 'current' | 'completed'): string {
+    switch (status) {
+      case 'current':
+        return 'bg-warning text-dark';
+      case 'upcoming':
+        return 'bg-info text-dark';
+      case 'completed':
+        return 'bg-secondary';
+      default:
+        return 'bg-light text-dark';
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.subscriptions.unsubscribe();
+  }
+}
+
+
+	> <div class="quiz-container" *ngIf="quiz">
+  <div class="freeze-overlay" *ngIf="isQuizStarted"></div>
+
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h3>{{ quiz.title }}</h3>
+      <div *ngIf="isQuizStarted" class="fw-bold fs-4">
+        Time Left: {{ timeLeft | number: '2.0-0' }}s
+      </div>
+    </div>
+    <div class="card-body">
+      <div *ngIf="!isQuizStarted" class="text-center">
+        <h4>Quiz Rules</h4>
+        <ul class="list-unstyled">
+          <li>Total Questions: {{ quiz.questions.length }}</li>
+          <li>Time Limit: {{ quiz.questions.length * 60 }} seconds</li>
+          <li>You can skip questions.</li>
+          <li>The window will be locked during the quiz.</li>
+        </ul>
+        <button class="btn btn-primary btn-lg mt-3" (click)="startQuiz()">Start Quiz</button>
+      </div>
+
+      <div *ngIf="isQuizStarted">
+        <div *ngFor="let q of currentQuestions; let i = index">
+          <div class="mb-4">
+            <h5>Q{{ (currentPage - 1) * questionsPerPage + i + 1 }}. {{ q.text }}</h5>
+            <div class="list-group">
+              <label *ngFor="let option of q.options; let j = index" class="list-group-item list-group-item-action">
+                <input class="form-check-input me-2" type="radio" [name]="'question'+q.id" [value]="j"
+                  (change)="selectAnswer(q.id, j)">
+                {{ option }}
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="d-flex justify-content-between mt-4">
+          <button class="btn btn-secondary" (click)="prevPage()" [disabled]="currentPage === 1">
+            Previous
+          </button>
+          <button *ngIf="currentPage < totalPages" class="btn btn-info" (click)="nextPage()">
+            Next
+          </button>
+          <button *ngIf="currentPage === totalPages" class="btn btn-success" data-bs-toggle="modal"
+            data-bs-target="#quizResultModal" (click)="submitQuiz()">
+            Submit Quiz
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<app-quiz-result-modal [result]="quizResult"></app-quiz-result-modal>
+
+	> import { Component, OnDestroy, OnInit } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
+import { Subscription, interval } from 'rxjs';
+import { Question } from '../../../models/question.model';
+import { Quiz, QuizAttempt } from '../../../models/quiz.model';
+import { AuthService } from '../../../services/auth.service';
+import { QuizService } from '../../../services/quiz.service';
+
+@Component({
+  selector: 'app-quiz-take',
+  templateUrl: './quiz-take.component.html',
+  styleUrls: ['./quiz-take.component.scss'],
+})
+export class QuizTakeComponent implements OnInit, OnDestroy {
+  quiz: Quiz | undefined;
+  isQuizStarted = false;
+
+  timeLeft: number = 0;
+  timerSubscription: Subscription | undefined;
+
+  currentQuestions: Question[] = [];
+  currentPage = 1;
+  questionsPerPage = 5;
+  totalPages = 1;
+
+  userAnswers: { [questionId: number]: number } = {};
+  quizResult: QuizAttempt | null = null;
+
+  constructor(
+    private route: ActivatedRoute,
+    private router: Router,
+    private quizService: QuizService,
+    private authService: AuthService
+  ) {}
+
+  ngOnInit(): void {
+    const quizId = +this.route.snapshot.paramMap.get('id')!;
+    this.quizService.getQuizById(quizId).subscribe((q) => {
+      this.quiz = q;
+      if (this.quiz) {
+        this.timeLeft = this.quiz.questions.length * 60;
+        this.totalPages = Math.ceil(
+          this.quiz.questions.length / this.questionsPerPage
+        );
+      }
+    });
+  }
+
+  startQuiz() {
+    this.isQuizStarted = true;
+    this.updateCurrentQuestions();
+    this.timerSubscription = interval(1000).subscribe(() => {
+      if (this.timeLeft > 0) {
+        this.timeLeft--;
+      } else {
+        this.submitQuiz();
+      }
+    });
+    document.documentElement.requestFullscreen();
+  }
+
+  updateCurrentQuestions() {
+    const startIndex = (this.currentPage - 1) * this.questionsPerPage;
+    const endIndex = startIndex + this.questionsPerPage;
+    this.currentQuestions = this.quiz!.questions.slice(startIndex, endIndex);
+  }
+
+  nextPage() {
+    if (this.currentPage < this.totalPages) {
+      this.currentPage++;
+      this.updateCurrentQuestions();
+    }
+  }
+
+  prevPage() {
+    if (this.currentPage > 1) {
+      this.currentPage--;
+      this.updateCurrentQuestions();
+    }
+  }
+
+  selectAnswer(questionId: number, optionIndex: number) {
+    this.userAnswers[questionId] = optionIndex;
+  }
+
+  submitQuiz() {
+    this.timerSubscription?.unsubscribe();
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    }
+    // No score calculation on frontend
+
+    const attempt = {
+      quizId: this.quiz!.id,
+      answers: this.userAnswers,
+    };
+
+    this.quizService.submitQuiz(attempt).subscribe((result) => {
+      this.quizResult = result;
+      // The modal should be triggered from here using Bootstrap's JS API or a service
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.timerSubscription?.unsubscribe();
+  }
+}
+
+
+	> <div class="container-fluid">
+  <h1 class="mb-4">Settings</h1>
+  <div class="row">
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          Update Profile Information
+        </div>
+        <div class="card-body">
+          <form [formGroup]="profileForm" (ngSubmit)="onProfileUpdate()">
+            <div class="mb-3">
+              <label for="username" class="form-label">Username</label>
+              <input type="text" id="username" class="form-control" formControlName="username">
+            </div>
+            <div class="mb-3">
+              <label for="email" class="form-label">Email Address</label>
+              <input type="email" id="email" class="form-control" formControlName="email">
+            </div>
+            <button type="submit" class="btn btn-primary" [disabled]="profileForm.invalid || !profileForm.dirty">
+              Save Changes
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          Change Password
+        </div>
+        <div class="card-body">
+          <form [formGroup]="passwordForm" (ngSubmit)="onPasswordChange()">
+            <div class="mb-3">
+              <label for="newPassword" class="form-label">New Password</label>
+              <input type="password" id="newPassword" class="form-control" formControlName="newPassword">
+            </div>
+            <div class="mb-3">
+              <label for="confirmPassword" class="form-label">Confirm New Password</label>
+              <input type="password" id="confirmPassword" class="form-control" formControlName="confirmPassword">
+              <div *ngIf="passwordForm.errors?.['passwordMismatch'] && passwordForm.get('confirmPassword')?.touched"
+                class="text-danger mt-1">
+                Passwords do not match.
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary" [disabled]="passwordForm.invalid">
+              Change Password
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="successMessage" class="alert alert-success mt-4">
+    {{ successMessage }}
+  </div>
+</div>
+
+	> import { Component, OnInit } from '@angular/core';
+import {
+  AbstractControl,
+  FormBuilder,
+  FormGroup,
+  ValidationErrors,
+  ValidatorFn,
+  Validators,
+} from '@angular/forms';
+import { AuthService } from '../../../services/auth.service';
+
+export const passwordMatchValidator: ValidatorFn = (
+  control: AbstractControl
+): ValidationErrors | null => {
+  const password = control.get('newPassword');
+  const confirmPassword = control.get('confirmPassword');
+
+  return password && confirmPassword && password.value !== confirmPassword.value
+    ? { passwordMismatch: true }
+    : null;
+};
+
+@Component({
+  selector: 'app-settings',
+  templateUrl: './settings.component.html',
+  styleUrls: ['./settings.component.scss'],
+})
+export class SettingsComponent implements OnInit {
+  profileForm!: FormGroup;
+  passwordForm!: FormGroup;
+  successMessage: string = '';
+
+  constructor(private fb: FormBuilder, private authService: AuthService) {}
+
+  ngOnInit(): void {
+    this.profileForm = this.fb.group({
+      username: ['', Validators.required],
+      email: ['', [Validators.required, Validators.email]],
+    });
+
+    this.passwordForm = this.fb.group(
+      {
+        newPassword: ['', [Validators.required, Validators.minLength(6)]],
+        confirmPassword: ['', Validators.required],
+      },
+      { validators: passwordMatchValidator }
+    );
+
+    const currentUser = this.authService.currentUserValue;
+    if (currentUser) {
+      this.profileForm.patchValue({
+        username: currentUser.username,
+        email: currentUser.email,
+      });
+    }
+  }
+
+  onProfileUpdate(): void {
+    if (this.profileForm.invalid) return;
+
+    console.log('Updating profile:', this.profileForm.value);
+    this.showSuccessMessage('Profile updated successfully!');
+    this.profileForm.markAsPristine();
+  }
+
+  onPasswordChange(): void {
+    if (this.passwordForm.invalid) return;
+
+    console.log('Changing password to:', this.passwordForm.value.newPassword);
+    this.showSuccessMessage('Password changed successfully!');
+    this.passwordForm.reset();
+  }
+
+  private showSuccessMessage(message: string): void {
+    this.successMessage = message;
+    setTimeout(() => {
+      this.successMessage = '';
+    }, 3000);
+  }
+}
+
+
+7. layout:
+	> <div class="d-flex">
+  <app-sidebar></app-sidebar>
+  <div class="content-container p-4">
+    <router-outlet></router-outlet>
+  </div>
+</div>
+
+	> import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-main-layout',
+  templateUrl: './main-layout.component.html',
+  styleUrl: './main-layout.component.scss'
+})
+export class MainLayoutComponent {
+
+}
+
+
+	> <div class="sidebar d-flex flex-column flex-shrink-0 p-3 text-white bg-dark">
+  <a href="/" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-white text-decoration-none">
+    <i class="bi bi-patch-question-fill me-2 fs-4"></i>
+    <span class="fs-4">Online Quiz</span>
+  </a>
+  <hr>
+  <ul class="nav nav-pills flex-column mb-auto">
+    <li class="nav-item">
+      <a routerLink="/dashboard" routerLinkActive="active" class="nav-link text-white">
+        <i class="bi bi-speedometer2 me-2"></i> Dashboard
+      </a>
+    </li>
+    <li>
+      <a routerLink="/profile" routerLinkActive="active" class="nav-link text-white">
+        <i class="bi bi-person-circle me-2"></i> Profile
+      </a>
+    </li>
+    <li>
+      <a routerLink="/quizzes/available" routerLinkActive="active" class="nav-link text-white">
+        <i class="bi bi-journals me-2"></i> Available Quizzes
+      </a>
+    </li>
+    <li>
+      <a routerLink="/quizzes/current" routerLinkActive="active" class="nav-link text-white">
+        <i class="bi bi-clock-history me-2"></i> Current Quizzes
+      </a>
+    </li>
+    <li>
+      <a routerLink="/quizzes/upcoming" routerLinkActive="active" class="nav-link text-white">
+        <i class="bi bi-calendar-event me-2"></i> Upcoming Quizzes
+      </a>
+    </li>
+    <li>
+      <a routerLink="/quiz/history" routerLinkActive="active" class="nav-link text-white">
+        <i class="bi bi-archive me-2"></i> Quiz History
+      </a>
+    </li>
+    <li>
+      <a routerLink="/settings" routerLinkActive="active" class="nav-link text-white">
+        <i class="bi bi-gear me-2"></i> Settings
+      </a>
+    </li>
+
+    <!-- Admin Links -->
+    <ng-container *ngIf="isAdmin">
+      <hr>
+      <li class="nav-item">
+        <span class="nav-link text-secondary">ADMIN</span>
+      </li>
+      <li>
+        <a routerLink="/admin/quiz/create" routerLinkActive="active" class="nav-link text-white">
+          <i class="bi bi-plus-circle me-2"></i> Create Quiz
+        </a>
+      </li>
+      <li>
+        <a routerLink="/admin/quiz/list" routerLinkActive="active" class="nav-link text-white">
+          <i class="bi bi-list-task me-2"></i> Manage Quizzes
+        </a>
+      </li>
+    </ng-container>
+
+  </ul>
+  <hr>
+  <div class="dropdown">
+    <a href="#" class="d-flex align-items-center text-white text-decoration-none dropdown-toggle" id="dropdownUser1"
+      data-bs-toggle="dropdown" aria-expanded="false">
+      <i class="bi bi-person-badge-fill me-2 fs-4"></i>
+      <strong>{{ userName }}</strong>
+    </a>
+    <ul class="dropdown-menu dropdown-menu-dark text-small shadow" aria-labelledby="dropdownUser1">
+      <li><a class="dropdown-item" routerLink="/settings">Settings</a></li>
+      <li><a class="dropdown-item" routerLink="/profile">Profile</a></li>
+      <li>
+        <hr class="dropdown-divider">
+      </li>
+      <li><a class="dropdown-item" (click)="logout()">Sign out</a></li>
+    </ul>
+  </div>
+</div>
+
+	> import { Component, OnInit } from '@angular/core';
+import { AuthService } from '../../services/auth.service';
+
+@Component({
+  selector: 'app-sidebar',
+  templateUrl: './sidebar.component.html',
+  styleUrl: './sidebar.component.scss',
+})
+export class SidebarComponent implements OnInit {
+  userName: string = 'User';
+  isAdmin: boolean = false;
+
+  constructor(private authService: AuthService) {}
+
+  ngOnInit(): void {
+    this.authService.currentUser$.subscribe((user) => {
+      if (user) {
+        this.userName = user.username;
+        this.isAdmin = user.role === 'admin';
+      }
+    });
+  }
+
+  logout() {
+    this.authService.logout();
+  }
+}
+
+
+8. shared:
+	> <div class="modal fade" id="adminQuizDetailsModal" tabindex="-1" aria-labelledby="adminQuizDetailsModalLabel"
+  aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content" *ngIf="quiz">
+      <div class="modal-header">
+        <h5 class="modal-title" id="adminQuizDetailsModalLabel">Quiz Details: {{ quiz.title }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Summary -->
+        <h6>Summary</h6>
+        <div class="row mb-3">
+          <div class="col-md-4"><strong>Category:</strong> {{ quiz.category }}</div>
+          <div class="col-md-4"><strong>Status:</strong> {{ quiz.status | titlecase }}</div>
+          <div class="col-md-4"><strong>Scheduled:</strong> {{ quiz.schedule | date:'full' }}</div>
+        </div>
+        <hr>
+
+        <!-- Questions and Answers -->
+        <h6>Questions & Correct Answers ({{ quiz.questions.length }})</h6>
+        <div *ngFor="let question of quiz.questions; let i = index" class="card mb-3">
+          <div class="card-header">
+            <strong>Question {{ i + 1 }}:</strong> {{ question.text }}
+          </div>
+          <ul class="list-group list-group-flush">
+            <li *ngFor="let option of question.options; let j = index" class="list-group-item"
+              [class.list-group-item-success]="j === question.correctOptionIndex">
+              {{ option }}
+              <span *ngIf="j === question.correctOptionIndex" class="badge bg-success float-end">Correct Answer</span>
+            </li>
+          </ul>
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+	> import { Component, Input } from '@angular/core';
+import { Quiz } from '../../models/quiz.model';
+
+@Component({
+  selector: 'app-admin-quiz-details-modal',
+  templateUrl: './admin-quiz-details-modal.component.html',
+  styleUrls: ['./admin-quiz-details-modal.component.scss'],
+})
+export class AdminQuizDetailsModalComponent {
+  @Input() quiz: Quiz | null = null;
+}
+
+
+	> <div class="modal fade" id="quizInfoModal" tabindex="-1" aria-labelledby="quizInfoModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content" *ngIf="selectedAttempt && selectedQuiz">
+      <div class="modal-header">
+        <h5 class="modal-title" id="quizInfoModalLabel">Quiz Details: {{ selectedQuiz.title }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <h6>Quiz Summary</h6>
+        <p>Category: {{ selectedQuiz.category }}</p>
+        <p>Date Taken: {{ selectedAttempt.date | date:'medium' }}</p>
+
+        <hr>
+
+        <h6>Performance Stats</h6>
+        <p><strong>Score: {{ selectedAttempt.score }} out of {{ selectedAttempt.totalQuestions }}</strong></p>
+        <div class="progress">
+          <div class="progress-bar" role="progressbar"
+            [style.width.%]="(selectedAttempt.score / selectedAttempt.totalQuestions) * 100" aria-valuenow="25"
+            aria-valuemin="0" aria-valuemax="100">
+            {{ ((selectedAttempt.score / selectedAttempt.totalQuestions) * 100) | number:'1.0-0' }}%
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+	> import { Component, Input } from '@angular/core';
+import { Quiz, QuizAttempt } from '../../models/quiz.model';
+
+@Component({
+  selector: 'app-quiz-info-modal',
+  templateUrl: './quiz-info-modal.component.html',
+  styleUrls: ['./quiz-info-modal.component.scss'],
+})
+export class QuizInfoModalComponent {
+  @Input() selectedAttempt: QuizAttempt | null = null;
+  @Input() selectedQuiz: Quiz | undefined;
+}
+
+
+	> <div class="modal fade" id="quizResultModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+  aria-labelledby="staticBackdropLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" *ngIf="result">
+      <div class="modal-header">
+        <h5 class="modal-title" id="staticBackdropLabel">Quiz Completed!</h5>
+      </div>
+      <div class="modal-body text-center">
+        <h4>Your Score</h4>
+        <p class="display-3">{{ result.score }} / {{ result.totalQuestions }}</p>
+        <p>Thank you for participating.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal" (click)="goToDashboard()">Close & Go to
+          Dashboard</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+	> import { Component, Input } from '@angular/core';
+import { Router } from '@angular/router';
+import { QuizAttempt } from '../../models/quiz.model';
+
+@Component({
+  selector: 'app-quiz-result-modal',
+  templateUrl: './quiz-result-modal.component.html',
+  styleUrls: ['./quiz-result-modal.component.scss'],
+})
+export class QuizResultModalComponent {
+  @Input() result: QuizAttempt | null = null;
+
+  constructor(private router: Router) {}
+
+  goToDashboard() {
+    this.router.navigate(['/dashboard']);
+  }
+}
+
+
+
+9. routing: 
+	> import { NgModule } from '@angular/core';
+import { RouterModule, Routes } from '@angular/router';
+import { LoginComponent } from './components/auth/login/login.component';
+import { RegisterComponent } from './components/auth/register/register.component';
+import { MainLayoutComponent } from './layout/main-layout/main-layout.component';
+import { authGuard } from './guards/auth.guard';
+import { DashboardComponent } from './components/user/dashboard/dashboard.component';
+import { ProfileComponent } from './components/user/profile/profile.component';
+import { SettingsComponent } from './components/user/settings/settings.component';
+import { QuizListComponent } from './components/user/quiz-list/quiz-list.component';
+import { QuizHistoryComponent } from './components/user/quiz-history/quiz-history.component';
+import { QuizTakeComponent } from './components/user/quiz-take/quiz-take.component';
+import { AdminQuizCreateComponent } from './components/admin/admin-quiz-create/admin-quiz-create.component';
+import { AdminQuizListComponent } from './components/admin/admin-quiz-list/admin-quiz-list.component';
+
+const routes: Routes = [
+  { path: 'login', component: LoginComponent },
+  { path: 'register', component: RegisterComponent },
+  {
+    path: '',
+    component: MainLayoutComponent,
+    canActivate: [authGuard],
+    children: [
+      { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+      { path: 'dashboard', component: DashboardComponent },
+      { path: 'profile', component: ProfileComponent },
+      { path: 'settings', component: SettingsComponent },
+      {
+        path: 'quizzes/available',
+        component: QuizListComponent,
+        data: { type: 'all' },
+      },
+      {
+        path: 'quizzes/current',
+        component: QuizListComponent,
+        data: { type: 'current' },
+      },
+      {
+        path: 'quizzes/upcoming',
+        component: QuizListComponent,
+        data: { type: 'upcoming' },
+      },
+      {
+        path: 'quizzes/category/:category',
+        component: QuizListComponent,
+        data: { type: 'category' },
+      },
+      { path: 'quiz/history', component: QuizHistoryComponent },
+      { path: 'quiz/take/:id', component: QuizTakeComponent },
+
+      // Admin Routes
+      {
+        path: 'admin/quiz/create',
+        component: AdminQuizCreateComponent,
+        canActivate: [authGuard],
+        data: { role: 'admin' },
+      },
+      {
+        path: 'admin/quiz/list',
+        component: AdminQuizListComponent,
+        canActivate: [authGuard],
+        data: { role: 'admin' },
+      },
+    ],
+  },
+  { path: '**', redirectTo: 'login' }, // Fallback route
+];
+
+@NgModule({
+  imports: [RouterModule.forRoot(routes)],
+  exports: [RouterModule],
+})
+export class AppRoutingModule {}
+
+
+10. module:
+	> import { NgModule } from '@angular/core';
+import {
+  BrowserModule,
+  provideClientHydration,
+} from '@angular/platform-browser';
+
+import { AppRoutingModule } from './app-routing.module';
+import { AppComponent } from './app.component';
+import { MainLayoutComponent } from './layout/main-layout/main-layout.component';
+import { SidebarComponent } from './layout/sidebar/sidebar.component';
+import { LoginComponent } from './components/auth/login/login.component';
+import { RegisterComponent } from './components/auth/register/register.component';
+import { AdminQuizCreateComponent } from './components/admin/admin-quiz-create/admin-quiz-create.component';
+import { AdminQuizListComponent } from './components/admin/admin-quiz-list/admin-quiz-list.component';
+import { QuizResultModalComponent } from './shared/quiz-result-modal/quiz-result-modal.component';
+import { QuizInfoModalComponent } from './shared/quiz-info-modal/quiz-info-modal.component';
+import { DashboardComponent } from './components/user/dashboard/dashboard.component';
+import { ProfileComponent } from './components/user/profile/profile.component';
+import { QuizListComponent } from './components/user/quiz-list/quiz-list.component';
+import { QuizHistoryComponent } from './components/user/quiz-history/quiz-history.component';
+import { QuizTakeComponent } from './components/user/quiz-take/quiz-take.component';
+import { SettingsComponent } from './components/user/settings/settings.component';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { AdminQuizDetailsModalComponent } from './shared/admin-quiz-details-modal/admin-quiz-details-modal.component';
+import { NgChartsModule } from 'ng2-charts';
+import {
+  HTTP_INTERCEPTORS,
+  HttpClientModule,
+  provideHttpClient,
+  withFetch,
+} from '@angular/common/http';
+import { JwtInterceptor } from './interceptors/jwt.interceptor';
+import { provideRouter } from '@angular/router';
+
+@NgModule({
+  declarations: [
+    AppComponent,
+    MainLayoutComponent,
+    SidebarComponent,
+    LoginComponent,
+    RegisterComponent,
+    AdminQuizCreateComponent,
+    AdminQuizListComponent,
+    QuizResultModalComponent,
+    QuizInfoModalComponent,
+    DashboardComponent,
+    ProfileComponent,
+    QuizListComponent,
+    QuizHistoryComponent,
+    QuizTakeComponent,
+    SettingsComponent,
+    AdminQuizDetailsModalComponent,
+  ],
+  imports: [
+    BrowserModule,
+    AppRoutingModule,
+    FormsModule,
+    ReactiveFormsModule,
+    HttpClientModule,
+    NgChartsModule,
+  ],
+  providers: [
+    // provideRouter(Router),
+    provideClientHydration(),
+    { provide: HTTP_INTERCEPTORS, useClass: JwtInterceptor, multi: true },
+    provideHttpClient(withFetch()),
+  ],
+  bootstrap: [AppComponent],
+})
+export class AppModule {}
+
+
+11. app.component.html:
+<router-outlet></router-outlet>
+
+12. package.json:
+{
+  "name": "online-quiz",
+  "version": "0.0.0",
+  "scripts": {
+    "ng": "ng",
+    "start": "ng serve",
+    "build": "ng build",
+    "watch": "ng build --watch --configuration development",
+    "test": "ng test",
+    "serve:ssr:onlineQuiz": "node dist/online-quiz/server/server.mjs"
+  },
+  "private": true,
+  "dependencies": {
+    "@angular/animations": "^18.0.0",
+    "@angular/cdk": "^18.2.13",
+    "@angular/common": "^18.0.0",
+    "@angular/compiler": "^18.0.0",
+    "@angular/core": "^18.0.0",
+    "@angular/forms": "^18.0.0",
+    "@angular/platform-browser": "^18.0.0",
+    "@angular/platform-browser-dynamic": "^18.0.0",
+    "@angular/platform-server": "^18.0.0",
+    "@angular/router": "^18.0.0",
+    "@angular/ssr": "^18.0.7",
+    "bootstrap": "^5.3.7",
+    "chart.js": "^3.9.1",
+    "express": "^4.18.2",
+    "ng2-charts": "^4.0.1",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.3.0",
+    "zone.js": "~0.14.3"
+  },
+  "devDependencies": {
+    "@angular-devkit/build-angular": "^18.0.7",
+    "@angular/cli": "^18.0.7",
+    "@angular/compiler-cli": "^18.0.0",
+    "@types/express": "^4.17.17",
+    "@types/jasmine": "~5.1.0",
+    "@types/node": "^18.18.0",
+    "jasmine-core": "~5.1.0",
+    "karma": "~6.4.0",
+    "karma-chrome-launcher": "~3.2.0",
+    "karma-coverage": "~2.2.0",
+    "karma-jasmine": "~5.1.0",
+    "karma-jasmine-html-reporter": "~2.1.0",
+    "typescript": "~5.4.2"
+  }
+}

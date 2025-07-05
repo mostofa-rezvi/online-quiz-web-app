@@ -3,7 +3,6 @@ package com.encapsulearn.OnlineQuiz_spring.security;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
@@ -15,8 +14,7 @@ import java.util.function.Function;
 @Component
 public class JwtUtil {
 
-    @Value("${jwt.secret}")
-    private String secret;
+    private String secret = "mySecretKey123456789012345678901234567890123456789012345678901234567890";
 
     private static final long JWT_TOKEN_VALIDITY = 1000 * 60 * 60 * 10; // 10 hours
 
@@ -47,13 +45,24 @@ public class JwtUtil {
         return doGenerateToken(claims, userDetails.getUsername());
     }
 
+    // private String doGenerateToken(Map<String, Object> claims, String subject) {
+    // return Jwts.builder()
+    // .setClaims(claims)
+    // .setSubject(subject)
+    // .setIssuedAt(new Date(System.currentTimeMillis()))
+    // .setExpiration(new Date(System.currentTimeMillis() + JWT_TOKEN_VALIDITY))
+    // .signWith(SignatureAlgorithm.HS512, secret)
+    // .compact();
+    // }
+
     private String doGenerateToken(Map<String, Object> claims, String subject) {
         return Jwts.builder()
                 .setClaims(claims)
                 .setSubject(subject)
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + JWT_TOKEN_VALIDITY))
-                .signWith(SignatureAlgorithm.HS512, secret)
+                // Change the algorithm here
+                .signWith(SignatureAlgorithm.HS256, secret) // Use HS256 instead of HS512
                 .compact();
     }
 

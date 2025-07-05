@@ -25,8 +25,9 @@ public class AuthService {
 
     public AuthResponse login(AuthRequest request) {
         authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
-        );
+                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
+        // Note: Your UserDetailsService probably loads the user by username,
+        // which in this case is the email. This is correct.
         final UserDetails user = userRepository.findByEmail(request.getEmail()).orElseThrow();
         final String jwt = jwtUtil.generateToken(user);
         return new AuthResponse(jwt);
@@ -39,15 +40,22 @@ public class AuthService {
         User newUser = new User();
         newUser.setName(request.getName());
         newUser.setEmail(request.getEmail());
+        // FIX: Set the username. We'll use the email as the username.
+        newUser.setName(request.getEmail());
         newUser.setPassword(passwordEncoder.encode(request.getPassword()));
-        newUser.setRole(Role.USER); // Default role is USER
+        newUser.setRole(Role.USER);
+
         User savedUser = userRepository.save(newUser);
 
+        // Map the saved user to a DTO to return to the client
         UserDto userDto = new UserDto();
         userDto.setId(savedUser.getId());
         userDto.setName(savedUser.getName());
         userDto.setEmail(savedUser.getEmail());
+        // FIX: Also map the username to the DTO
+        userDto.setUsername(savedUser.getUsername());
         userDto.setRole(savedUser.getRole());
+
         return userDto;
     }
 }

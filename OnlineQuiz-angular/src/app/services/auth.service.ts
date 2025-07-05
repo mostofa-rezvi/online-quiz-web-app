@@ -1,9 +1,10 @@
-import { Injectable } from '@angular/core';
+import { Inject, Injectable, PLATFORM_ID } from '@angular/core';
 
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
 import { Router } from '@angular/router';
 import { jwtDecode } from 'jwt-decode';
+import { isPlatformBrowser } from '@angular/common';
 
 @Injectable({
   providedIn: 'root',
@@ -12,8 +13,13 @@ export class AuthService {
   private apiUrl = 'http://localhost:8080/api/auth';
   private tokenKey = 'authToken';
   private decodedToken: any;
+  private isBrowser!: boolean;
 
-  constructor(private http: HttpClient, private router: Router) {
+  constructor(
+    private http: HttpClient,
+    private router: Router,
+    @Inject(PLATFORM_ID) private platformId: Object
+  ) {
     this.decodeToken();
   }
 
@@ -37,11 +43,17 @@ export class AuthService {
   }
 
   getToken(): string | null {
-    return localStorage.getItem(this.tokenKey);
+    if (this.isBrowser) {
+      return localStorage.getItem('token');
+    }
+    return null;
   }
 
-  isLoggedIn(): boolean {
-    return !!this.getToken();
+  get isLoggedIn(): boolean {
+    if (isPlatformBrowser(this.platformId)) {
+      return !!localStorage.getItem('token');
+    }
+    return false;
   }
 
   private decodeToken(): void {

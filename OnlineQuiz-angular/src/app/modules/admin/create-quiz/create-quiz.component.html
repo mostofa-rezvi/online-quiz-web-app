@@ -2,7 +2,7 @@
   <h1>Create New Quiz</h1>
   <div class="card">
     <div class="card-body">
-      <form [formGroup]="quizForm" (ngSubmit)="onSubmit()">
+      <form formGroup="quizForm" (ngSubmit)="onSubmit()">
         <!-- Quiz Details -->
         <div class="row mb-3">
           <div class="col-md-6">
@@ -36,7 +36,7 @@
         </div>
 
         <div formArrayName="questions">
-          <div *ngFor="let question of questions.controls; let i=index" [formGroupName]="i" class="card mb-3">
+          <div *ngFor="let question of questions.controls; let i=index" formGroupName="i" class="card mb-3">
             <div class="card-header d-flex justify-content-between">
               Question {{i + 1}}
               <button type="button" class="btn-close" aria-label="Close" (click)="removeQuestion(i)"></button>
