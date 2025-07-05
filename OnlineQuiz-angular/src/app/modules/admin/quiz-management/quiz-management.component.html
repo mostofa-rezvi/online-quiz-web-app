@@ -1,0 +1,41 @@
+<div class="container-fluid">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Quiz Management</h1>
+    <a routerLink="/admin/quiz-management/new" class="btn btn-primary">
+      <i class="bi bi-plus-circle me-2"></i>Create New Quiz
+    </a>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <h5 class="card-title">All Quizzes</h5>
+      <table class="table table-hover">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Title</th>
+            <th>Start Time</th>
+            <th>End Time</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Example Row -->
+          <tr *ngFor="let quiz of allQuizzes">
+            <td>{{ quiz.id }}</td>
+            <td>{{ quiz.title }}</td>
+            <td>{{ quiz.startTime | date:'medium' }}</td>
+            <td>{{ quiz.endTime | date:'medium' }}</td>
+            <td><span class="badge" [ngClass]="getQuizStatus(quiz).class">{{ getQuizStatus(quiz).text }}</span></td>
+            <td>
+              <button class="btn btn-sm btn-info me-2"><i class="bi bi-eye"></i></button>
+              <button class="btn btn-sm btn-warning me-2"><i class="bi bi-pencil"></i></button>
+              <button class="btn btn-sm btn-danger"><i class="bi bi-trash"></i></button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

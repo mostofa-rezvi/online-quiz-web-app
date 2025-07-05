@@ -1,0 +1,21 @@
+<div class="container-fluid">
+  <h1 class="mb-4">Available Quizzes</h1>
+  <div *ngIf="availableQuizzes.length > 0; else noQuizzes" class="row">
+    <div class="col-md-4 mb-4" *ngFor="let quiz of availableQuizzes">
+      <div class="card h-100">
+        <div class="card-body d-flex flex-column">
+          <h5 class="card-title">{{ quiz.title }}</h5>
+          <p class="card-text">{{ quiz.description }}</p>
+          <p class="card-text"><small class="text-muted">Ends: {{ quiz.endTime | date:'fullDate' }} at {{ quiz.endTime |
+              date:'shortTime' }}</small></p>
+          <div class="mt-auto">
+            <a [routerLink]="['/user/attempt', quiz.id]" class="btn btn-primary">Start Quiz</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <ng-template #noQuizzes>
+    <div class="alert alert-info">No quizzes are currently available. Please check back later.</div>
+  </ng-template>
+</div>

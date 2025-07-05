@@ -1,0 +1,35 @@
+<div class="container-fluid">
+  <h1 class="mb-4">My Dashboard</h1>
+  <div class="row">
+    <div class="col-md-6 mb-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <h5 class="card-title">Quiz Performance</h5>
+          <p class="card-text">Your recent quiz scores.</p>
+          <div style="height: 300px;">
+            <ngx-charts-bar-vertical [view]="[500, 300]" [results]="quizPerformanceData" [xAxis]="true" [yAxis]="true"
+              [legend]="false" [showXAxisLabel]="true" [showYAxisLabel]="true" xAxisLabel="Quiz" yAxisLabel="Score (%)"
+              [scheme]="colorScheme">
+            </ngx-charts-bar-vertical>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6 mb-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <h5 class="card-title">Top Available Quizzes</h5>
+          <p class="card-text">Ready to test your knowledge? Jump into one of these quizzes now!</p>
+          <div *ngIf="availableQuizzes.length > 0" class="list-group">
+            <a *ngFor="let quiz of availableQuizzes.slice(0, 3)" [routerLink]="['/user/attempt', quiz.id]"
+              class="list-group-item list-group-item-action">
+              {{ quiz.title }}
+            </a>
+          </div>
+          <div *ngIf="availableQuizzes.length === 0" class="alert alert-info">No quizzes available right now.</div>
+          <a routerLink="/user/available-quizzes" class="btn btn-primary mt-3">View All Quizzes</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

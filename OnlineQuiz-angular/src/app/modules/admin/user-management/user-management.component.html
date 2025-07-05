@@ -1,0 +1,67 @@
+<div class="container-fluid">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>User Management</h1>
+    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createAdminModal">
+      <i class="bi bi-person-plus-fill me-2"></i>Create New Admin
+    </button>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <h5 class="card-title">All System Users</h5>
+      <table class="table table-hover">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Role</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let user of allUsers">
+            <td>{{ user.id }}</td>
+            <td>{{ user.name }}</td>
+            <td>{{ user.email }}</td>
+            <td>
+              <span class="badge" [ngClass]="user.role === 'ADMIN' ? 'bg-primary' : 'bg-info'">
+                {{ user.role }}
+              </span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Create Admin Modal -->
+<div class="modal fade" id="createAdminModal" tabindex="-1" aria-labelledby="createAdminModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="createAdminModalLabel">Create New Admin User</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form [formGroup]="createAdminForm" (ngSubmit)="onCreateAdmin()">
+          <div class="mb-3">
+            <label for="adminName" class="form-label">Full Name</label>
+            <input type="text" id="adminName" class="form-control" formControlName="name">
+          </div>
+          <div class="mb-3">
+            <label for="adminEmail" class="form-label">Email</label>
+            <input type="email" id="adminEmail" class="form-control" formControlName="email">
+          </div>
+          <div class="alert alert-info">A default password will be assigned. The user should change it upon first login.
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="submit" class="btn btn-primary" [disabled]="createAdminForm.invalid"
+              data-bs-dismiss="modal">Create Admin</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

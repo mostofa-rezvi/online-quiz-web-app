@@ -1,0 +1,30 @@
+<div class="container-fluid">
+  <h1 class="mb-4">My Quiz History</h1>
+  <div class="card">
+    <div class="card-body">
+      <div *ngIf="myResults.length > 0; else noResults" class="table-responsive">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>Quiz Title</th>
+              <th>Score</th>
+              <th>Percentage</th>
+              <th>Date Submitted</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let result of myResults">
+              <td>{{ result.quizTitle }}</td>
+              <td>{{ result.score }} / {{ result.totalQuestions }}</td>
+              <td>{{ (result.score / result.totalQuestions) * 100 | number:'1.0-2' }}%</td>
+              <td>{{ result.submittedAt | date:'medium' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <ng-template #noResults>
+        <div class="alert alert-info">You have not completed any quizzes yet.</div>
+      </ng-template>
+    </div>
+  </div>
+</div>

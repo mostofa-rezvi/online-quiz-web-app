@@ -1,0 +1,67 @@
+<div class="d-flex flex-column flex-shrink-0 p-3 text-white bg-dark" [style.width]="isCollapsed ? '5rem' : '280px'"
+  style="transition: width 0.3s;">
+  <a routerLink="/" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-white text-decoration-none">
+    <i class="bi bi-controller fs-4 me-2"></i>
+    <span class="fs-4" *ngIf="!isCollapsed">QuizApp</span>
+  </a>
+  <hr>
+  <ul class="nav nav-pills flex-column mb-auto">
+    <!-- Admin Links -->
+    <ng-container *ngIf="isAdmin">
+      <li class="nav-item">
+        <a routerLink="/admin/dashboard" routerLinkActive="active" class="nav-link text-white">
+          <i class="bi bi-speedometer2 me-2"></i> <span *ngIf="!isCollapsed">Dashboard</span>
+        </a>
+      </li>
+      <li>
+        <a routerLink="/admin/quiz-management" routerLinkActive="active" class="nav-link text-white">
+          <i class="bi bi-journal-text me-2"></i> <span *ngIf="!isCollapsed">Quiz Management</span>
+        </a>
+      </li>
+      <li>
+        <a routerLink="/admin/user-management" routerLinkActive="active" class="nav-link text-white">
+          <i class="bi bi-people me-2"></i> <span *ngIf="!isCollapsed">User Management</span>
+        </a>
+      </li>
+    </ng-container>
+
+    <!-- User Links -->
+    <ng-container *ngIf="!isAdmin">
+      <li class="nav-item">
+        <a routerLink="/user/dashboard" routerLinkActive="active" class="nav-link text-white">
+          <i class="bi bi-speedometer2 me-2"></i> <span *ngIf="!isCollapsed">Dashboard</span>
+        </a>
+      </li>
+      <li>
+        <a routerLink="/user/available-quizzes" routerLinkActive="active" class="nav-link text-white">
+          <i class="bi bi-card-list me-2"></i> <span *ngIf="!isCollapsed">Available Quizzes</span>
+        </a>
+      </li>
+      <li>
+        <a routerLink="/user/my-results" routerLinkActive="active" class="nav-link text-white">
+          <i class="bi bi-check-circle me-2"></i> <span *ngIf="!isCollapsed">My Results</span>
+        </a>
+      </li>
+    </ng-container>
+  </ul>
+  <hr>
+  <div class="dropdown">
+    <a href="#" class="d-flex align-items-center text-white text-decoration-none dropdown-toggle" id="dropdownUser1"
+      data-bs-toggle="dropdown" aria-expanded="false">
+      <i class="bi bi-person-circle fs-4 me-2"></i>
+      <strong *ngIf="!isCollapsed">{{ username | slice:0:15 }}{{ (username?.length || 0) > 15 ? '...' : '' }}</strong>
+    </a>
+    <ul class="dropdown-menu dropdown-menu-dark text-small shadow" aria-labelledby="dropdownUser1">
+      <li><a class="dropdown-item" href="#">Settings</a></li>
+      <li><a class="dropdown-item" href="#">Profile</a></li>
+      <li>
+        <hr class="dropdown-divider">
+      </li>
+      <li><a class="dropdown-item" (click)="logout()">Sign out</a></li>
+    </ul>
+  </div>
+  <hr>
+  <button class="btn btn-outline-light" (click)="toggleSidebar()">
+    <i class="bi" [ngClass]="isCollapsed ? 'bi-chevron-double-right' : 'bi-chevron-double-left'"></i>
+  </button>
+</div>
